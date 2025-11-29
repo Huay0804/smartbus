@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Chi tiết chuyến {{ trip.maChuyen }}{% endblock %}
+
+{% block content %}
+{% if is_admin_mode %}
+  <a href="{{ url_for('admin_route_trips', tuyen_id=trip.tuyen_id) }}"
+     class="btn btn-outline-secondary mb-3">
+    &laquo; Quay lại quản lý chuyến
+  </a>
+{% else %}
+  <a href="{{ url_for('route_detail', tuyen_id=trip.tuyen_id) }}"
+     class="btn btn-outline-secondary mb-3">
+    &laquo; Quay lại danh sách chuyến
+  </a>
+{% endif %}
+
+<h2 class="mt-2">Chi tiết chuyến xe #{{ trip.maChuyen }}</h2>
+<ul>
+  <li><strong>Tuyến:</strong> {{ tuyen.maHienThi }} - {{ tuyen.tenTuyen }}</li>
+  <li><strong>Điểm bắt đầu:</strong> {{ tuyen.diemBatDau }}</li>
+  <li><strong>Điểm kết thúc:</strong> {{ tuyen.diemKetThuc }}</li>
+  <li><strong>Ngày khởi hành:</strong> {{ trip.ngayKhoiHanh }}</li>
+  <li><strong>Giờ khởi hành:</strong> {{ trip.gioKhoiHanh }}</li>
+</ul>
+
+<h4>Hành trình (demo)</h4>
+<ol>
+  {% for s in stops %}
+    <li>{{ s.tenTram }} - {{ s.diaChi }}</li>
+  {% else %}
+    <li>Chưa có danh sách trạm dừng.</li>
+  {% endfor %}
+</ol>
+
+<a class="btn btn-success" href="{{ url_for('booking', trip_id=trip.maChuyen) }}">
+  Đặt vé chuyến này
+</a>
+{% endblock %}

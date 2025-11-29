@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Quản lý trạm dừng - {{ tuyen.maHienThi }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('admin_routes') }}" class="btn btn-outline-secondary mb-3">
+  &laquo; Quay lại quản lý tuyến
+</a>
+
+<h2>Trạm dừng tuyến {{ tuyen.maHienThi }} - {{ tuyen.tenTuyen }}</h2>
+
+<form class="row g-2 mb-3" method="post">
+  <div class="col-md-3">
+    <input class="form-control" name="tenTram" placeholder="Tên trạm">
+  </div>
+  <div class="col-md-3">
+    <input class="form-control" name="diaChi" placeholder="Địa chỉ">
+  </div>
+  <div class="col-md-2">
+    <input class="form-control" name="thuTuTrenTuyen" placeholder="Thứ tự">
+  </div>
+  <div class="col-md-2">
+    <input class="form-control" name="lat" placeholder="Vĩ độ">
+  </div>
+  <div class="col-md-2">
+    <input class="form-control" name="lng" placeholder="Kinh độ">
+  </div>
+  <div class="col-12 col-md-2 d-grid mt-2">
+    <button class="btn btn-primary">Thêm trạm</button>
+  </div>
+</form>
+
+<table class="table table-sm table-hover align-middle">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Tên trạm</th>
+      <th>Địa chỉ</th>
+      <th>Vĩ độ</th>
+      <th>Kinh độ</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for tram in stops %}
+    <tr>
+      <td>{{ tram.thuTuTrenTuyen }}</td>
+      <td>{{ tram.tenTram }}</td>
+      <td>{{ tram.diaChi }}</td>
+      <td>{{ tram.lat }}</td>
+      <td>{{ tram.lng }}</td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="5" class="text-center text-muted">
+        Chưa có trạm dừng nào cho tuyến này.
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- MAP: hiển thị trực quan các trạm dừng để admin chỉnh sửa -->
+<div class="row mt-4">
+  <div class="col-12">
+    <h4>Bản đồ trạm dừng</h4>
+    <div id="stops-map" class="border rounded" style="height: 320px;"></div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const stops = {{ stops_geo|tojson|safe }};
+    renderRouteMap(stops, "stops-map");
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Quản lý tuyến đường{% endblock %}
+
+{% block content %}
+<h2 class="mb-3">Quản lý tuyến đường</h2>
+
+<p class="text-muted">
+  Email admin mặc định: <code>admin@smartbus.local</code> –
+  mật khẩu: <code>admin123</code>
+</p>
+
+<form class="row g-2 mb-3" method="post">
+  <div class="col-md-2">
+    <input class="form-control" name="maHienThi"
+           placeholder="Mã tuyến (ví dụ: B2)">
+  </div>
+  <div class="col-md-3">
+    <input class="form-control" name="tenTuyen" placeholder="Tên tuyến">
+  </div>
+  <div class="col-md-3">
+    <input class="form-control" name="diemBatDau" placeholder="Điểm bắt đầu">
+  </div>
+  <div class="col-md-3">
+    <input class="form-control" name="diemKetThuc" placeholder="Điểm kết thúc">
+  </div>
+  <div class="col-md-1 d-grid">
+    <button class="btn btn-primary">Thêm / Cập nhật</button>
+  </div>
+</form>
+
+<table class="table table-hover align-middle">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Mã tuyến</th>
+      <th>Tên tuyến</th>
+      <th>Điểm bắt đầu</th>
+      <th>Điểm kết thúc</th>
+      <th style="width: 220px;">Hành động</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for tuyen in routes %}
+    <tr>
+      <td>{{ tuyen.maTuyen }}</td>
+      <td>{{ tuyen.maHienThi }}</td>
+      <td>{{ tuyen.tenTuyen }}</td>
+      <td>{{ tuyen.diemBatDau }}</td>
+      <td>{{ tuyen.diemKetThuc }}</td>
+      <td>
+        <a class="btn btn-sm btn-outline-primary"
+           href="{{ url_for('admin_route_trips', tuyen_id=tuyen.maTuyen) }}">
+          Quản lý chuyến
+        </a>
+        <a class="btn btn-sm btn-outline-secondary"
+           href="{{ url_for('admin_route_stops', tuyen_id=tuyen.maTuyen) }}">
+          Quản lý trạm
+        </a>
+        <form method="post"
+            action="{{ url_for('delete_route', tuyen_id=tuyen.maTuyen) }}"
+            class="d-inline"
+            onsubmit="return confirm('Bạn chắc chắn muốn xóa tuyến {{ tuyen.maHienThi }}?');">
+            <button class="btn btn-sm btn-outline-danger">
+                Xóa
+            </button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="6" class="text-center text-muted">
+        Chưa có tuyến nào.
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

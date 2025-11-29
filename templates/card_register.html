@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Đăng ký thẻ xe{% endblock %}
+{% block content %}
+<h2>Đăng ký thẻ xe (demo)</h2>
+<p class="text-muted">
+  Chức năng này chưa được triển khai đầy đủ. Bạn có thể mô tả luồng đăng ký thẻ
+  trong báo cáo, còn phần mềm chỉ dừng ở mức form minh họa.
+</p>
+
+<form>
+  <div class="mb-3">
+    <label class="form-label">Mã số thẻ</label>
+    <input type="text" class="form-control" disabled placeholder="Sẽ cấp bởi hệ thống / nhà cung cấp">
+  </div>
+  <button class="btn btn-secondary" disabled>Đăng ký</button>
+</form>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Tuyến {{ tuyen.maHienThi }} - {{ tuyen.tenTuyen }}{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('routes') }}" class="btn btn-link">&laquo; Quay lại danh sách tuyến</a>
+
+<h2 class="mt-2">Tuyến {{ tuyen.maHienThi }} - {{ tuyen.tenTuyen }}</h2>
+<p>
+  <strong>Điểm bắt đầu:</strong> {{ tuyen.diemBatDau }} –
+  <strong>Điểm kết thúc:</strong> {{ tuyen.diemKetThuc }}
+</p>
+
+<div class="row mt-4">
+  <div class="col-md-6">
+    <h4>Danh sách chuyến xe</h4>
+    <table class="table table-bordered mt-2">
+      <thead>
+        <tr>
+          <th>Mã chuyến</th>
+          <th>Ngày</th>
+          <th>Giờ</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ch in trips %}
+        <tr>
+          <td>{{ ch.maChuyen }}</td>
+          <td>{{ ch.ngayKhoiHanh }}</td>
+          <td>{{ ch.gioKhoiHanh }}</td>
+          <td>
+            <a class="btn btn-sm btn-outline-primary"
+               href="{{ url_for('trip_detail', trip_id=ch.maChuyen) }}">
+              Xem chi tiết
+            </a>
+            <a class="btn btn-sm btn-success ms-1"
+               href="{{ url_for('booking', trip_id=ch.maChuyen) }}">
+              Đặt vé
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="text-center">
+            Chưa có chuyến nào cho tuyến này.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col-md-6">
+    <h4>Danh sách trạm dừng</h4>
+    <table class="table table-sm table-bordered mt-2">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tên trạm</th>
+          <th>Địa chỉ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in stops %}
+        <tr>
+          <td>{{ s.thuTuTrenTuyen }}</td>
+          <td>{{ s.tenTram }}</td>
+          <td>{{ s.diaChi }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="3" class="text-center">
+            Chưa có trạm dừng nào cho tuyến này.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- MAP -->
+    <div id="route-map"
+         class="border rounded mt-3"
+         style="height: 260px; overflow: hidden;"></div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const stops = {{ stops_geo|tojson|safe }};
+        renderRouteMap(stops, "route-map");
+      });
+    </script>
+  </div>
+</div>
+{% endblock %}

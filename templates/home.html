@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Trang chủ{% endblock %}
+{% block content %}
+<div class="p-5 mb-4 bg-light rounded-3">
+  <div class="container-fluid py-5">
+    <h1 class="display-5 fw-bold">Hệ thống quản lý xe buýt SmartBus</h1>
+    <p class="col-md-8 fs-5 mt-3">
+      Tra cứu tuyến, xem lịch trình chuyến xe, đặt vé và quản lý thẻ xe một cách nhanh chóng.
+    </p>
+    <a class="btn btn-primary btn-lg mt-3" href="{{ url_for('routes') }}">
+      Bắt đầu tra cứu tuyến
+    </a>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-4">
+    <h4>Tra cứu tuyến &amp; chuyến</h4>
+    <p>Xem thông tin các tuyến xe, điểm dừng, lịch chạy.</p>
+  </div>
+  <div class="col-md-4">
+    <h4>Đặt vé trực tuyến</h4>
+    <p>Chọn chuyến, chọn ghế và nhận vé ngay trên hệ thống.</p>
+  </div>
+  <div class="col-md-4">
+    <h4>Quản lý thẻ xe</h4>
+    <p>Đăng ký và theo dõi tình trạng thẻ xe của hành khách.</p>
+  </div>
+</div>
+{% endblock %}

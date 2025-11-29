@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Danh sách tuyến xe{% endblock %}
+{% block content %}
+<h2>Danh sách tuyến xe</h2>
+
+<table class="table table-striped mt-3">
+  <thead>
+    <tr>
+      <th>Mã tuyến</th>
+      <th>Tên tuyến</th>
+      <th>Điểm bắt đầu</th>
+      <th>Điểm kết thúc</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in routes %}
+    <tr>
+      <td>{{ r.maHienThi }}</td>
+      <td>{{ r.tenTuyen }}</td>
+      <td>{{ r.diemBatDau }}</td>
+      <td>{{ r.diemKetThuc }}</td>
+      <td>
+        <a class="btn btn-sm btn-outline-primary"
+           href="{{ url_for('route_detail', tuyen_id=r.maTuyen) }}">
+          Xem chuyến
+        </a>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="5" class="text-center">Chưa có tuyến nào.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
