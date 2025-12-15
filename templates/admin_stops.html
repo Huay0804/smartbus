@@ -9,24 +9,43 @@
 <h2>Trạm dừng tuyến {{ tuyen.maHienThi }} - {{ tuyen.tenTuyen }}</h2>
 
 <form class="row g-2 mb-3" method="post">
+  <input type="hidden" name="maTram" value="{{ edit_stop.maTram if edit_stop else '' }}">
+
   <div class="col-md-3">
-    <input class="form-control" name="tenTram" placeholder="Tên trạm">
+    <input class="form-control" name="tenTram" placeholder="Tên trạm"
+           value="{{ edit_stop.tenTram if edit_stop else '' }}">
   </div>
   <div class="col-md-3">
-    <input class="form-control" name="diaChi" placeholder="Địa chỉ">
+    <input class="form-control" name="diaChi" placeholder="Địa chỉ"
+           value="{{ edit_stop.diaChi if edit_stop else '' }}">
   </div>
   <div class="col-md-2">
-    <input class="form-control" name="thuTuTrenTuyen" placeholder="Thứ tự">
+    <input class="form-control" name="thuTuTrenTuyen" placeholder="Thứ tự"
+           value="{{ edit_stop.thuTuTrenTuyen if edit_stop else '' }}">
   </div>
   <div class="col-md-2">
-    <input class="form-control" name="lat" placeholder="Vĩ độ">
+    <input class="form-control" name="lat" placeholder="Vĩ độ"
+           value="{{ edit_stop.lat if edit_stop else '' }}">
   </div>
   <div class="col-md-2">
-    <input class="form-control" name="lng" placeholder="Kinh độ">
+    <input class="form-control" name="lng" placeholder="Kinh độ"
+           value="{{ edit_stop.lng if edit_stop else '' }}">
   </div>
+
   <div class="col-12 col-md-2 d-grid mt-2">
-    <button class="btn btn-primary">Thêm trạm</button>
+    <button class="btn btn-primary">
+      {{ "Cập nhật" if edit_stop else "Thêm trạm" }}
+    </button>
   </div>
+
+  {% if edit_stop %}
+  <div class="col-12 col-md-2 d-grid mt-2">
+    <a class="btn btn-outline-secondary"
+       href="{{ url_for('admin_route_stops', tuyen_id=tuyen.maTuyen) }}">
+      Hủy sửa
+    </a>
+  </div>
+  {% endif %}
 </form>
 
 <table class="table table-sm table-hover align-middle">
@@ -37,6 +56,7 @@
       <th>Địa chỉ</th>
       <th>Vĩ độ</th>
       <th>Kinh độ</th>
+      <th class="text-end">Thao tác</th>
     </tr>
   </thead>
   <tbody>
@@ -47,10 +67,23 @@
       <td>{{ tram.diaChi }}</td>
       <td>{{ tram.lat }}</td>
       <td>{{ tram.lng }}</td>
+      <td class="text-end">
+        <a class="btn btn-sm btn-outline-primary"
+           href="{{ url_for('admin_route_stops', tuyen_id=tuyen.maTuyen, edit=tram.maTram) }}">
+          Sửa
+        </a>
+
+        <form method="post"
+              action="{{ url_for('admin_delete_stop', tuyen_id=tuyen.maTuyen, tram_id=tram.maTram) }}"
+              onsubmit="return confirm('Bạn chắc chắn muốn xóa trạm này?');"
+              style="display:inline;">
+          <button class="btn btn-sm btn-outline-danger">Xóa</button>
+        </form>
+      </td>
     </tr>
     {% else %}
     <tr>
-      <td colspan="5" class="text-center text-muted">
+      <td colspan="6" class="text-center text-muted">
         Chưa có trạm dừng nào cho tuyến này.
       </td>
     </tr>
@@ -58,7 +91,6 @@
   </tbody>
 </table>
 
-<!-- MAP: hiển thị trực quan các trạm dừng để admin chỉnh sửa -->
 <div class="row mt-4">
   <div class="col-12">
     <h4>Bản đồ trạm dừng</h4>

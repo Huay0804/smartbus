@@ -1,4 +1,4 @@
-{% extends "base.html" %} 
+{% extends "base.html" %}
 {% block title %}Quản lý chuyến - {{ tuyen.maHienThi }}{% endblock %}
 
 {% block content %}
@@ -6,116 +6,116 @@
   &laquo; Quay lại quản lý tuyến
 </a>
 
-<h2>Quản lý chuyến – Tuyến {{ tuyen.maHienThi }} - {{ tuyen.tenTuyen }}</h2>
-<p class="text-muted">
-  Điểm bắt đầu: {{ tuyen.diemBatDau }} –
-  Điểm kết thúc: {{ tuyen.diemKetThuc }}
-</p>
+<h2>Chuyến xe của tuyến {{ tuyen.maHienThi }} - {{ tuyen.tenTuyen }}</h2>
 
-<div class="row">
-  <!-- Cột trái: quản lý chuyến -->
-  <div class="col-lg-5 mb-4">
-    <h5>Danh sách chuyến xe</h5>
+<form method="post" class="row g-2 mb-3">
+  <input type="hidden" name="action" value="{{ 'edit_trip' if edit_trip else 'add_trip' }}">
+  <input type="hidden" name="trip_id" value="{{ edit_trip.maChuyen if edit_trip else '' }}">
 
-    <form class="row g-2 mb-3" method="post">
-      <div class="col-6">
-        <input type="date" name="ngayKhoiHanh" class="form-control">
-      </div>
-      <div class="col-4">
-        <input type="time" name="gioKhoiHanh" class="form-control">
-      </div>
-      <div class="col-2 d-grid">
-        <button class="btn btn-primary">Thêm chuyến</button>
-      </div>
-    </form>
-
-    <table class="table table-sm table-hover align-middle">
-      <thead>
-        <tr>
-          <th>Mã</th>
-          <th>Ngày</th>
-          <th>Giờ</th>
-          <th style="width: 180px;">Hành động</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for trip in trips %}
-        <tr>
-          <td>{{ trip.maChuyen }}</td>
-          <td>{{ trip.ngayKhoiHanh }}</td>
-          <td>{{ trip.gioKhoiHanh }}</td>
-          <td>
-            <!-- Xem chi tiết ở chế độ admin: thêm mode=admin -->
-            <a class="btn btn-sm btn-outline-primary me-1"
-               href="{{ url_for('trip_detail', trip_id=trip.maChuyen, mode='admin') }}">
-              Xem chi tiết
-            </a>
-
-            <!-- Nút xóa chuyến -->
-            <form method="post"
-                  action="{{ url_for('delete_trip', trip_id=trip.maChuyen) }}"
-                  class="d-inline"
-                  onsubmit="return confirm('Bạn chắc chắn muốn xóa chuyến #{{ trip.maChuyen }}?');">
-              <button class="btn btn-sm btn-outline-danger">
-                Xóa
-              </button>
-            </form>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="4" class="text-center text-muted">
-            Chưa có chuyến nào cho tuyến này.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="col-md-4">
+    <input class="form-control" name="ngayKhoiHanh" placeholder="YYYY-MM-DD"
+           value="{{ edit_trip.ngayKhoiHanh if edit_trip else '' }}">
+  </div>
+  <div class="col-md-4">
+    <input class="form-control" name="gioKhoiHanh" placeholder="HH:MM"
+           value="{{ edit_trip.gioKhoiHanh if edit_trip else '' }}">
   </div>
 
-  <!-- Cột phải: trạm + map -->
-  <div class="col-lg-7">
-    <h5>Trạm dừng (chỉ hiển thị)</h5>
-    <p class="text-muted">
-      Để thêm / xóa trạm dừng, vào Admin &rarr; Quản lý trạm.
-    </p>
+  <div class="col-md-2 d-grid">
+    <button class="btn btn-primary">
+      {{ "Cập nhật chuyến" if edit_trip else "Thêm chuyến" }}
+    </button>
+  </div>
 
-    <table class="table table-sm table-hover align-middle mb-3">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Tên trạm</th>
-          <th>Địa chỉ</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for tram in stops %}
-        <tr>
-          <td>{{ tram.thuTuTrenTuyen }}</td>
-          <td>{{ tram.tenTram }}</td>
-          <td>{{ tram.diaChi }}</td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="3" class="text-center text-muted">
-            Chưa có trạm dừng nào cho tuyến này.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  {% if edit_trip %}
+  <div class="col-md-2 d-grid">
+    <a class="btn btn-outline-secondary"
+       href="{{ url_for('admin_route_trips', tuyen_id=tuyen.maTuyen) }}">
+      Hủy sửa
+    </a>
+  </div>
+  {% endif %}
+</form>
 
-    <!-- MAP -->
-    <div id="admin-trips-map"
-         class="border rounded bg-light-subtle"
-         style="height: 320px; overflow: hidden;"></div>
+<table class="table table-sm table-hover align-middle">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Ngày</th>
+      <th>Giờ</th>
+      <th class="text-end">Thao tác</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for trip in trips %}
+    <tr>
+      <td>#{{ trip.maChuyen }}</td>
+      <td>{{ trip.ngayKhoiHanh }}</td>
+      <td>{{ trip.gioKhoiHanh }}</td>
+      <td class="text-end">
+        <a class="btn btn-sm btn-outline-secondary"
+           href="{{ url_for('trip_detail', trip_id=trip.maChuyen, mode='admin') }}">
+          Xem
+        </a>
+
+        <a class="btn btn-sm btn-outline-primary"
+           href="{{ url_for('admin_route_trips', tuyen_id=tuyen.maTuyen, edit=trip.maChuyen) }}">
+          Sửa
+        </a>
+
+        <form method="post"
+              action="{{ url_for('delete_trip', trip_id=trip.maChuyen) }}"
+              style="display:inline;"
+              onsubmit="return confirm('Xóa chuyến này? (không xóa được nếu đã có vé)');">
+          <button class="btn btn-sm btn-outline-danger">Xóa</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="4" class="text-center text-muted">Chưa có chuyến nào.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<hr class="my-4">
+
+<h4>Danh sách trạm (read-only)</h4>
+<table class="table table-sm">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Tên trạm</th>
+      <th>Địa chỉ</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in stops %}
+    <tr>
+      <td>{{ s.thuTuTrenTuyen }}</td>
+      <td>{{ s.tenTram }}</td>
+      <td>{{ s.diaChi }}</td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="3" class="text-center text-muted">Chưa có trạm.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="row mt-4">
+  <div class="col-12">
+    <h4>Bản đồ trạm dừng</h4>
+    <div id="stops-map" class="border rounded" style="height: 320px;"></div>
   </div>
 </div>
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     const stops = {{ stops_geo|tojson|safe }};
-    renderRouteMap(stops, "admin-trips-map");
+    renderRouteMap(stops, "stops-map");
   });
 </script>
 {% endblock %}

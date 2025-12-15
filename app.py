@@ -3,7 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import os
-import json
 
 app = Flask(__name__)
 
@@ -30,24 +29,18 @@ class KhachHang(db.Model):
     __tablename__ = "khach_hang"
     maKH = db.Column(db.Integer, primary_key=True)
 
-    # Thuộc tính của NguoiDung
     hoTen = db.Column(db.String(100))
     soDienThoai = db.Column(db.String(20))
     diaChi = db.Column(db.String(200))
-    ngaySinh = db.Column(db.String(20))  # hoặc db.Date
+    ngaySinh = db.Column(db.String(20))
 
-    # Thuộc tính riêng của KhachHang trong class diagram
-    ngayDangKy = db.Column(db.String(20))  # có thể set mặc định = ngày tạo tài khoản
+    ngayDangKy = db.Column(db.String(20))
     soCCCD = db.Column(db.String(20))
 
     tai_khoan_id = db.Column(db.Integer, db.ForeignKey("tai_khoan.id"), nullable=False)
-    tai_khoan = db.relationship(
-        "TaiKhoan",
-        backref=db.backref("khach_hang", uselist=False)
-    )
+    tai_khoan = db.relationship("TaiKhoan", backref=db.backref("khach_hang", uselist=False))
 
     hoa_don = db.relationship("HoaDon", backref="khach_hang", lazy=True)
-    # quan hệ 0..* TheTu như class diagram
     the_tus = db.relationship("TheTu", backref="khach_hang", lazy=True)
 
 
@@ -83,11 +76,10 @@ class HoaDon(db.Model):
     maHoaDon = db.Column(db.Integer, primary_key=True)
     khach_hang_id = db.Column(db.Integer, db.ForeignKey("khach_hang.maKH"))
 
-    # Thuộc tính theo class diagram
     ngayLap = db.Column(db.DateTime, default=datetime.utcnow)
     tongTien = db.Column(db.Float, default=0)
-    phuongThucThanhToan = db.Column(db.String(50), default="TIEN_MAT")  # hoặc "ONLINE"
-    trangThai = db.Column(db.String(20), default="DA_THANH_TOAN")       # hoặc "CHO_THANH_TOAN"
+    phuongThucThanhToan = db.Column(db.String(50), default="TIEN_MAT")
+    trangThai = db.Column(db.String(20), default="DA_THANH_TOAN")
 
     ve_xe = db.relationship("VeXe", backref="hoa_don", lazy=True)
 
@@ -99,7 +91,6 @@ class VeXe(db.Model):
     chuyen_id = db.Column(db.Integer, db.ForeignKey("chuyen_xe.maChuyen"))
     soGhe = db.Column(db.String(10))
     giaVe = db.Column(db.Float)
-
     trangThai = db.Column(db.String(20), default="CON HIEU LUC")
 
 
@@ -110,7 +101,6 @@ class TheTu(db.Model):
     maSoThe = db.Column(db.String(50))
     ngayBatDau = db.Column(db.String(20))
     ngayHetHan = db.Column(db.String(20))
-
     trangThai = db.Column(db.String(20), default="CON HAN")
 
 
@@ -124,12 +114,7 @@ class TramDung(db.Model):
     lat = db.Column(db.Float, nullable=False)
     lng = db.Column(db.Float, nullable=False)
 
-    tuyen_id = db.Column(
-        db.Integer,
-        db.ForeignKey("tuyen_xe.maTuyen"),
-        nullable=False,
-    )
-
+    tuyen_id = db.Column(db.Integer, db.ForeignKey("tuyen_xe.maTuyen"), nullable=False)
     tuyen = db.relationship("TuyenXe", back_populates="tram_dungs")
 
 
@@ -138,7 +123,6 @@ class TramDung(db.Model):
 with app.app_context():
     db.create_all()
 
-    # Tạo tài khoản admin mặc định nếu chưa có
     if not TaiKhoan.query.filter_by(vai_tro="ADMIN").first():
         admin = TaiKhoan(
             email="admin@smartbus.local",
@@ -152,11 +136,9 @@ with app.app_context():
 # ==================== HÀM TIỆN ÍCH ====================
 
 def current_user():
-    """Trả về đối tượng TaiKhoan đang đăng nhập hoặc None."""
     uid = session.get("user_id")
     if uid is None:
         return None
-    # dùng Session.get thay cho Query.get để tránh warning
     return db.session.get(TaiKhoan, uid)
 
 def build_stops_geo(tram_dungs):
@@ -181,15 +163,13 @@ def inject_user():
 
 @app.route("/")
 def home():
-    user = current_user()
-    return render_template("home.html", user=user)
+    return render_template("home.html", user=current_user())
 
 
 # ==================== ĐĂNG KÝ / ĐĂNG NHẬP ====================
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    # Nếu đã đăng nhập thì không cho đăng ký nữa
     if current_user():
         return redirect(url_for("home"))
 
@@ -231,7 +211,6 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    # Nếu đã đăng nhập thì quay về trang chủ
     if current_user():
         return redirect(url_for("home"))
 
@@ -258,7 +237,7 @@ def logout():
     return redirect(url_for("home"))
 
 
-# ==================== CÁC TRANG KHÁC ====================
+# ==================== PUBLIC ====================
 
 @app.route("/routes")
 def routes():
@@ -268,7 +247,6 @@ def routes():
 
 @app.route("/routes/<int:tuyen_id>")
 def route_detail(tuyen_id):
-    """Trang public: xem thông tin tuyến + danh sách chuyến + trạm (read-only)."""
     tuyen = TuyenXe.query.get_or_404(tuyen_id)
 
     danh_sach_chuyen = (
@@ -287,21 +265,18 @@ def route_detail(tuyen_id):
     stops_geo = build_stops_geo(danh_sach_tram)
     return render_template(
         "route_detail.html",
-        tuyen = tuyen,
-        trips = danh_sach_chuyen,
-        stops = danh_sach_tram,
-        stops_geo = stops_geo,
+        tuyen=tuyen,
+        trips=danh_sach_chuyen,
+        stops=danh_sach_tram,
+        stops_geo=stops_geo,
     )
 
-from flask import request
 
 @app.route("/trips/<int:trip_id>")
 def trip_detail(trip_id):
     user = current_user()
     trip = ChuyenXe.query.get_or_404(trip_id)
     tuyen = TuyenXe.query.get(trip.tuyen_id)
-
-    # nếu URL có ?mode=admin thì hiểu là xem từ trang admin
     is_admin_mode = request.args.get("mode") == "admin"
 
     return render_template(
@@ -323,9 +298,8 @@ def booking(trip_id):
     trip = ChuyenXe.query.get_or_404(trip_id)
     tuyen = trip.tuyen
 
-    # Cấu hình đơn giản
-    seat_capacity = 40          # mỗi chuyến 40 ghế, bạn đổi nếu muốn
-    gia_mac_dinh = 50000        # giá vé cố định, muốn động thì đọc từ DB
+    seat_capacity = 40
+    gia_mac_dinh = 50000
     booked_seats = {ve.soGhe for ve in trip.ve_xe if ve.trangThai != "DA_HUY"}
 
     if request.method == "POST":
@@ -336,11 +310,9 @@ def booking(trip_id):
             flash("Bạn phải chọn ít nhất một ghế.")
             return redirect(url_for("booking", trip_id=trip_id))
 
-        # tách chuỗi "01,02,03" -> ["01","02","03"]
         seats = [s.strip() for s in raw_seats.split(",") if s.strip()]
-        seats = sorted(set(seats))  # bỏ trùng
+        seats = sorted(set(seats))
 
-        # ghế nào đã bị đặt trước đó?
         already = [s for s in seats if s in booked_seats]
         if already:
             flash("Các ghế đã có người đặt: " + ", ".join(already))
@@ -353,12 +325,10 @@ def booking(trip_id):
 
         tong_tien = gia_ve * len(seats)
 
-        # Tạo hóa đơn
         hoa_don = HoaDon(khach_hang=kh, tongTien=tong_tien)
         db.session.add(hoa_don)
-        db.session.flush()  # lấy mã hóa đơn
+        db.session.flush()
 
-        # Tạo từng vé cho từng ghế
         for seat in seats:
             ve = VeXe(
                 hoa_don=hoa_don,
@@ -369,9 +339,9 @@ def booking(trip_id):
             db.session.add(ve)
 
         db.session.commit()
-
         flash(f"Đặt {len(seats)} vé thành công! Mã hóa đơn: {hoa_don.maHoaDon}")
         return redirect(url_for("tickets"))
+
     return render_template(
         "booking.html",
         trip=trip,
@@ -382,7 +352,31 @@ def booking(trip_id):
         user=user,
     )
 
-from flask import abort
+
+@app.route("/tickets")
+def tickets():
+    user = current_user()
+    if not user:
+        flash("Bạn cần đăng nhập để xem vé đã đặt.")
+        return redirect(url_for("login"))
+
+    khach = KhachHang.query.filter_by(tai_khoan_id=user.id).first()
+    if not khach:
+        flash("Không tìm thấy thông tin khách hàng.")
+        return redirect(url_for("home"))
+
+    tickets = (
+        VeXe.query
+        .join(HoaDon, VeXe.hoa_don_id == HoaDon.maHoaDon)
+        .join(ChuyenXe, VeXe.chuyen_id == ChuyenXe.maChuyen)
+        .join(TuyenXe, ChuyenXe.tuyen_id == TuyenXe.maTuyen)
+        .filter(HoaDon.khach_hang_id == khach.maKH)
+        .order_by(VeXe.maVe.desc())
+        .all()
+    )
+
+    return render_template("tickets.html", tickets=tickets)
+
 
 @app.route("/tickets/<int:ve_id>/cancel", methods=["POST"])
 def cancel_ticket(ve_id):
@@ -398,7 +392,6 @@ def cancel_ticket(ve_id):
 
     ve = VeXe.query.get_or_404(ve_id)
 
-    # Bảo vệ: chỉ cho hủy vé thuộc khách hiện tại
     if not ve.hoa_don or ve.hoa_don.khach_hang_id != khach.maKH:
         flash("Bạn không có quyền hủy vé này.")
         return redirect(url_for("tickets"))
@@ -411,34 +404,6 @@ def cancel_ticket(ve_id):
         flash(f"Đã hủy vé #{ve.maVe} thành công.")
 
     return redirect(url_for("tickets"))
-
-
-@app.route("/tickets")
-def tickets():
-    user = current_user()
-    if not user:
-        flash("Bạn cần đăng nhập để xem vé đã đặt.")
-        return redirect(url_for("login"))
-
-    khach = KhachHang.query.filter_by(tai_khoan_id=user.id).first()
-    if not khach:
-        flash("Không tìm thấy thông tin khách hàng.")
-        return redirect(url_for("home"))
-
-    # Lấy trực tiếp danh sách VeXe, dùng quan hệ chuyen ↔ hoa_don ↔ tuyen
-    tickets = (
-        VeXe.query
-        .join(HoaDon, VeXe.hoa_don_id == HoaDon.maHoaDon)
-        .join(ChuyenXe, VeXe.chuyen_id == ChuyenXe.maChuyen)
-        .join(TuyenXe, ChuyenXe.tuyen_id == TuyenXe.maTuyen)
-        .filter(HoaDon.khach_hang_id == khach.maKH)
-        .order_by(VeXe.maVe.desc())
-        .all()
-    )
-
-    return render_template("tickets.html", tickets=tickets)
-
-
 
 
 @app.route("/card-register")
@@ -455,40 +420,70 @@ def admin_routes():
         flash("Bạn không có quyền truy cập!")
         return redirect(url_for("home"))
 
+    # LOAD tuyến đang sửa (nếu có)
+    edit_route = None
+    edit_id = request.args.get("edit")
+    if edit_id:
+        edit_route = TuyenXe.query.get(int(edit_id))
+
     if request.method == "POST":
-        ma_tuyen_display = request.form.get("maHienThi")
-        ten_tuyen = request.form.get("tenTuyen")
-        diem_bd = request.form.get("diemBatDau")
-        diem_kt = request.form.get("diemKetThuc")
+        ma_tuyen_id = (request.form.get("maTuyen") or "").strip()  # hidden
+        ma_tuyen_display = (request.form.get("maHienThi") or "").strip()
+        ten_tuyen = (request.form.get("tenTuyen") or "").strip()
+        diem_bd = (request.form.get("diemBatDau") or "").strip()
+        diem_kt = (request.form.get("diemKetThuc") or "").strip()
 
-        if ten_tuyen and ma_tuyen_display:
-            tuyen = TuyenXe.query.filter_by(maHienThi=ma_tuyen_display).first()
-            if tuyen:
-                tuyen.tenTuyen = ten_tuyen
-                tuyen.diemBatDau = diem_bd
-                tuyen.diemKetThuc = diem_kt
-                flash("Đã cập nhật tuyến cũ thành công!")
-            else:
-                tuyen = TuyenXe(
-                    maHienThi=ma_tuyen_display,
-                    tenTuyen=ten_tuyen,
-                    diemBatDau=diem_bd,
-                    diemKetThuc=diem_kt,
-                )
-                db.session.add(tuyen)
-                flash("Đã thêm vào tuyến mới thành công!")
-            db.session.commit()
-        else:
+        if not ma_tuyen_display or not ten_tuyen:
             flash("Mã tuyến và tên tuyến không được để trống!")
+            return redirect(url_for("admin_routes"))
 
+        # Nếu đang sửa theo ID
+        if ma_tuyen_id:
+            tuyen = TuyenXe.query.get(int(ma_tuyen_id))
+            if not tuyen:
+                flash("Không tìm thấy tuyến để cập nhật.")
+                return redirect(url_for("admin_routes"))
+
+            # check trùng maHienThi với tuyến khác
+            other = TuyenXe.query.filter_by(maHienThi=ma_tuyen_display).first()
+            if other and other.maTuyen != tuyen.maTuyen:
+                flash("Mã hiển thị bị trùng với tuyến khác.")
+                return redirect(url_for("admin_routes", edit=tuyen.maTuyen))
+
+            tuyen.maHienThi = ma_tuyen_display
+            tuyen.tenTuyen = ten_tuyen
+            tuyen.diemBatDau = diem_bd
+            tuyen.diemKetThuc = diem_kt
+            db.session.commit()
+            flash("Đã cập nhật tuyến thành công!")
+            return redirect(url_for("admin_routes"))
+
+        # Nếu không có ID: tạo mới hoặc update theo maHienThi
+        tuyen = TuyenXe.query.filter_by(maHienThi=ma_tuyen_display).first()
+        if tuyen:
+            tuyen.tenTuyen = ten_tuyen
+            tuyen.diemBatDau = diem_bd
+            tuyen.diemKetThuc = diem_kt
+            flash("Đã cập nhật tuyến cũ thành công!")
+        else:
+            tuyen = TuyenXe(
+                maHienThi=ma_tuyen_display,
+                tenTuyen=ten_tuyen,
+                diemBatDau=diem_bd,
+                diemKetThuc=diem_kt,
+            )
+            db.session.add(tuyen)
+            flash("Đã thêm tuyến mới thành công!")
+
+        db.session.commit()
         return redirect(url_for("admin_routes"))
 
     danh_sach_tuyen = TuyenXe.query.order_by(TuyenXe.maTuyen).all()
-    return render_template("admin_routes.html", routes=danh_sach_tuyen)
+    return render_template("admin_routes.html", routes=danh_sach_tuyen, edit_route=edit_route)
+
 
 @app.route("/admin/routes/<int:tuyen_id>/stops", methods=["GET", "POST"])
 def admin_route_stops(tuyen_id):
-    """Quản lý trạm dừng cho từng tuyến (admin)."""
     user = current_user()
     if not user or user.vai_tro != "ADMIN":
         flash("Bạn không có quyền truy cập!")
@@ -496,29 +491,38 @@ def admin_route_stops(tuyen_id):
 
     tuyen = TuyenXe.query.get_or_404(tuyen_id)
 
+    # LOAD trạm đang sửa
+    edit_stop = None
+    edit_id = request.args.get("edit")
+    if edit_id:
+        edit_stop = TramDung.query.get(int(edit_id))
+        if not edit_stop or edit_stop.tuyen_id != tuyen_id:
+            edit_stop = None
+
     if request.method == "POST":
-        ma_tram = request.form.get("maTram")  # để sửa, có thể rỗng nếu thêm mới
+        ma_tram = request.form.get("maTram")
         ten_tram = request.form.get("tenTram")
         dia_chi = request.form.get("diaChi")
-        # ĐỌC ĐÚNG TÊN FIELD TRONG FORM
         thu_tu = request.form.get("thuTuTrenTuyen")
         lat = request.form.get("lat")
         lng = request.form.get("lng")
 
         if not ten_tram or not lat or not lng or not thu_tu:
             flash("Vui lòng nhập đầy đủ tên trạm, vị trí và thứ tự.")
-            # ĐÚNG TÊN ENDPOINT
             return redirect(url_for("admin_route_stops", tuyen_id=tuyen_id))
 
         if ma_tram:
-            tram = TramDung.query.get(ma_tram)
+            tram = TramDung.query.get(int(ma_tram))
             if tram and tram.tuyen_id == tuyen_id:
                 tram.tenTram = ten_tram
                 tram.diaChi = dia_chi
                 tram.thuTuTrenTuyen = int(thu_tu)
                 tram.lat = float(lat)
                 tram.lng = float(lng)
+                db.session.commit()
                 flash("Đã cập nhật trạm dừng.")
+            else:
+                flash("Không tìm thấy trạm để cập nhật.")
         else:
             tram = TramDung(
                 tenTram=ten_tram,
@@ -529,10 +533,9 @@ def admin_route_stops(tuyen_id):
                 tuyen_id=tuyen_id,
             )
             db.session.add(tram)
+            db.session.commit()
             flash("Đã thêm trạm dừng mới.")
 
-        db.session.commit()
-        # ĐÚNG TÊN ENDPOINT
         return redirect(url_for("admin_route_stops", tuyen_id=tuyen_id))
 
     danh_sach_tram = (
@@ -548,20 +551,45 @@ def admin_route_stops(tuyen_id):
         tuyen=tuyen,
         stops=danh_sach_tram,
         stops_geo=stops_geo,
+        edit_stop=edit_stop,
     )
+
+
+@app.route("/admin/routes/<int:tuyen_id>/stops/<int:tram_id>/delete", methods=["POST"])
+def admin_delete_stop(tuyen_id, tram_id):
+    user = current_user()
+    if not user or user.vai_tro != "ADMIN":
+        flash("Bạn không có quyền truy cập!")
+        return redirect(url_for("home"))
+
+    tram = TramDung.query.get_or_404(tram_id)
+    if tram.tuyen_id != tuyen_id:
+        flash("Trạm không thuộc tuyến này.")
+        return redirect(url_for("admin_route_stops", tuyen_id=tuyen_id))
+
+    db.session.delete(tram)
+    db.session.commit()
+    flash("Đã xóa trạm dừng.")
+
+    return redirect(url_for("admin_route_stops", tuyen_id=tuyen_id))
+
 
 @app.route("/admin/routes/<int:tuyen_id>/trips", methods=["GET", "POST"])
 def admin_route_trips(tuyen_id):
-    """
-    Quản lý các chuyến xe của một tuyến (admin).
-    URL dạng /admin/routes/<tuyen_id>/trips
-    """
     user = current_user()
     if not user or user.vai_tro != "ADMIN":
         flash("Bạn không có quyền truy cập trang quản trị.")
         return redirect(url_for("home"))
 
     tuyen = TuyenXe.query.get_or_404(tuyen_id)
+
+    # LOAD chuyến đang sửa
+    edit_trip = None
+    edit_id = request.args.get("edit")
+    if edit_id:
+        edit_trip = ChuyenXe.query.get(int(edit_id))
+        if not edit_trip or edit_trip.tuyen_id != tuyen.maTuyen:
+            edit_trip = None
 
     if request.method == "POST":
         action = request.form.get("action", "add_trip")
@@ -582,18 +610,27 @@ def admin_route_trips(tuyen_id):
                 db.session.commit()
                 flash("Đã thêm chuyến mới.")
 
-        elif action == "delete_trip":
+        elif action == "edit_trip":
             trip_id = request.form.get("trip_id")
-            if trip_id:
+            ngay = request.form.get("ngayKhoiHanh")
+            gio = request.form.get("gioKhoiHanh")
+
+            if not trip_id:
+                flash("Thiếu trip_id.")
+            else:
                 trip = ChuyenXe.query.get(int(trip_id))
-                if trip and trip.tuyen_id == tuyen.maTuyen:
-                    db.session.delete(trip)
+                if not trip or trip.tuyen_id != tuyen.maTuyen:
+                    flash("Chuyến không hợp lệ.")
+                elif trip.ve_xe:
+                    flash("Không thể sửa chuyến vì đã có vé được đặt.")
+                else:
+                    trip.ngayKhoiHanh = ngay
+                    trip.gioKhoiHanh = gio
                     db.session.commit()
-                    flash("Đã xóa chuyến xe.")
+                    flash("Đã cập nhật chuyến.")
 
         return redirect(url_for("admin_route_trips", tuyen_id=tuyen_id))
 
-    # GET: hiển thị danh sách chuyến + trạm (để vẽ map, nhưng không chỉnh sửa trạm ở đây)
     danh_sach_chuyen = (
         ChuyenXe.query
         .filter_by(tuyen_id=tuyen.maTuyen)
@@ -607,13 +644,16 @@ def admin_route_trips(tuyen_id):
         .all()
     )
     stops_geo = build_stops_geo(danh_sach_tram)
+
     return render_template(
         "admin_trips.html",
         tuyen=tuyen,
         trips=danh_sach_chuyen,
         stops=danh_sach_tram,
-        stops_geo = stops_geo,
+        stops_geo=stops_geo,
+        edit_trip=edit_trip,
     )
+
 
 @app.route("/admin/routes/<int:tuyen_id>/delete", methods=["POST"])
 def delete_route(tuyen_id):
@@ -624,17 +664,15 @@ def delete_route(tuyen_id):
 
     tuyen = TuyenXe.query.get_or_404(tuyen_id)
 
-    # Nếu còn chuyến hoặc trạm thì không cho xóa
     if tuyen.chuyen_xes or tuyen.tram_dungs:
-        flash("Không thể xóa tuyến vì vẫn còn chuyến xe hoặc trạm dừng. "
-              "Hãy xóa hết chuyến và trạm trước.")
+        flash("Không thể xóa tuyến vì vẫn còn chuyến xe hoặc trạm dừng. Hãy xóa hết trước.")
         return redirect(url_for("admin_routes"))
 
     db.session.delete(tuyen)
     db.session.commit()
     flash(f"Đã xóa tuyến {tuyen.maHienThi}.")
-
     return redirect(url_for("admin_routes"))
+
 
 @app.route("/admin/trips/<int:trip_id>/delete", methods=["POST"])
 def delete_trip(trip_id):
@@ -646,7 +684,6 @@ def delete_trip(trip_id):
     trip = ChuyenXe.query.get_or_404(trip_id)
     tuyen_id = trip.tuyen_id
 
-    # Nếu chuyến đã có vé thì không cho xóa (tránh lỗi dữ liệu)
     if trip.ve_xe:
         flash("Không thể xóa chuyến vì đã có vé được đặt.")
         return redirect(url_for("admin_route_trips", tuyen_id=tuyen_id))
@@ -654,7 +691,6 @@ def delete_trip(trip_id):
     db.session.delete(trip)
     db.session.commit()
     flash(f"Đã xóa chuyến #{trip.maChuyen}.")
-
     return redirect(url_for("admin_route_trips", tuyen_id=tuyen_id))
 
 
