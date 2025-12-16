@@ -3,98 +3,149 @@
 
 {% block content %}
 <div class="sb-page">
-
   <div class="sb-page-head">
     <div>
-      <h1 class="sb-page-title">Danh sách tuyến xe</h1>
-      <p class="sb-page-sub">
-        Tìm theo mã tuyến, tên tuyến, điểm bắt đầu hoặc điểm kết thúc.
+      <h1 class="sb-page-title">Tuyến xe buýt (demo)</h1>
+      <p class="sb-page-sub mb-0">
+        Chọn tuyến để xem trạm và vẽ lộ trình trên bản đồ (OSRM). Dữ liệu đang mô phỏng cho môn học.
       </p>
     </div>
-
     <div class="sb-page-actions">
       <a class="btn btn-outline-dark" href="{{ url_for('home') }}">Về trang tra cứu</a>
     </div>
   </div>
 
-  <div class="sb-toolbar">
-    <div class="sb-search">
-      <input id="routeSearch" class="form-control"
-             placeholder="VD: 01, Hội An, Tam Kỳ, Bến xe Trung tâm…"
-             value="{{ request.args.get('q','') }}">
-    </div>
-    <div class="sb-badge">
-      <span id="routeCount">{{ routes|length }}</span> tuyến
-    </div>
-  </div>
+  <div class="row g-3">
+    <div class="col-lg-4">
+      <div class="sb-box">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-bold">Danh sách tuyến</div>
+          <span class="badge text-bg-dark"><span id="routeCount">{{ routes|length }}</span> tuyến</span>
+        </div>
 
-  <div id="routesWrap" class="sb-route-list">
-    {% for r in routes %}
-      <div class="sb-route-card"
-           data-text="{{ (r.maHienThi ~ ' ' ~ (r.tenTuyen or '') ~ ' ' ~ (r.diemBatDau or '') ~ ' ' ~ (r.diemKetThuc or ''))|lower }}">
-        <div class="sb-route-left">
-          <div class="sb-route-code">{{ r.maHienThi }}</div>
-          <div class="sb-route-main">
-            <div class="sb-route-name">{{ r.tenTuyen }}</div>
-            <div class="sb-route-meta">
-              <span class="sb-dot"></span>
-              <span>{{ r.diemBatDau or "—" }}</span>
-              <span class="sb-arrow">→</span>
-              <span>{{ r.diemKetThuc or "—" }}</span>
+        <div class="mb-2">
+          <input id="routeSearch"
+                 class="form-control"
+                 placeholder="Tìm: 01, Hội An, Bến xe Trung tâm…"
+                 value="{{ request.args.get('q','') }}">
+        </div>
+
+        <div class="mb-2">
+          <select id="routeSelect" class="form-select">
+            {% for r in routes %}
+              <option value="{{ r.maTuyen }}">
+                {{ r.maHienThi }} — {{ r.tenTuyen or 'Chưa đặt tên' }}
+              </option>
+            {% endfor %}
+          </select>
+          <div class="form-text">
+            Tip: Bạn có thể click trực tiếp dòng trong bảng bên dưới.
+          </div>
+        </div>
+
+        <div class="table-responsive" style="max-height: 430px; overflow:auto;">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light" style="position: sticky; top: 0;">
+              <tr>
+                <th style="width: 90px;">Mã</th>
+                <th>Tuyến</th>
+              </tr>
+            </thead>
+            <tbody id="routeTableBody">
+              {% for r in routes %}
+              <tr class="route-row"
+                  role="button"
+                  data-route-id="{{ r.maTuyen }}"
+                  data-code="{{ r.maHienThi }}"
+                  data-name="{{ r.tenTuyen or '' }}"
+                  data-start="{{ r.diemBatDau or '' }}"
+                  data-end="{{ r.diemKetThuc or '' }}"
+                  data-text="{{ (r.maHienThi ~ ' ' ~ (r.tenTuyen or '') ~ ' ' ~ (r.diemBatDau or '') ~ ' ' ~ (r.diemKetThuc or ''))|lower }}">
+                <td class="fw-bold">{{ r.maHienThi }}</td>
+                <td>
+                  <div class="fw-semibold">{{ r.tenTuyen or "—" }}</div>
+                  <div class="text-muted small">
+                    {{ r.diemBatDau or "—" }} → {{ r.diemKetThuc or "—" }}
+                  </div>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="2" class="text-muted">Chưa có tuyến nào.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div id="emptyState" class="text-muted small mt-2 d-none">
+          Không tìm thấy tuyến phù hợp. Thử từ khoá khác.
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="sb-box sb-box--map">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-bold">Bản đồ tuyến</div>
+          <div class="text-muted small">* Vẽ theo trạm có tọa độ</div>
+        </div>
+        <div id="routes-map" class="border rounded" style="height: 560px; overflow:hidden;"></div>
+      </div>
+    </div>
+
+    <div class="col-lg-3">
+      <div class="sb-box">
+        <div class="fw-bold mb-1" id="selectedRouteTitle">Chưa chọn tuyến</div>
+        <div class="text-muted small mb-3" id="selectedRouteMeta">—</div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <div class="sb-kpi">
+              <div class="sb-kpi-label">Số trạm</div>
+              <div class="sb-kpi-value" id="kpiStops">0</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="sb-kpi">
+              <div class="sb-kpi-label">Marker hợp lệ</div>
+              <div class="sb-kpi-value" id="kpiMarkers">0</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="sb-kpi">
+              <div class="sb-kpi-label">Vẽ tuyến</div>
+              <div class="sb-kpi-value" id="kpiLine">—</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="sb-kpi">
+              <div class="sb-kpi-label">Dữ liệu map</div>
+              <div class="sb-kpi-value" id="kpiMapData">—</div>
             </div>
           </div>
         </div>
 
-        <div class="sb-route-right">
-          <a class="btn btn-sm btn-outline-dark"
-             href="{{ url_for('route_detail', tuyen_id=r.maTuyen) }}">
-            Chi tiết
-          </a>
-          <a class="btn btn-sm btn-primary"
-             href="{{ url_for('route_detail', tuyen_id=r.maTuyen) }}#trips">
-            Xem chuyến
-          </a>
+        <div class="d-grid gap-2 mb-3">
+          <a id="btnRouteDetail" class="btn btn-primary" href="#">Xem chi tiết tuyến</a>
+          <a class="btn btn-outline-dark" href="{{ url_for('home') }}">Về trang chủ</a>
+        </div>
+
+        <div class="fw-bold mb-2">Danh sách trạm</div>
+        <div class="sb-stop-list">
+          <ul class="sb-stop-ul mb-0" id="stopList">
+            <li class="text-muted">Chọn một tuyến để tải trạm.</li>
+          </ul>
+        </div>
+
+        <div class="text-muted small mt-2">
+          “Marker hợp lệ” = trạm có lat/lng. Nếu &lt; 2 thì không thể vẽ tuyến.
         </div>
       </div>
-    {% else %}
-      <div class="text-muted">Chưa có tuyến nào.</div>
-    {% endfor %}
+    </div>
   </div>
-
-  <div id="emptyState" class="sb-empty d-none">
-    <div class="sb-empty-title">Không tìm thấy tuyến phù hợp</div>
-    <div class="sb-empty-sub">Thử từ khoá khác: “01”, “Hội An”, “Huế”…</div>
-  </div>
-
 </div>
 
 <script>
-  (function () {
-    const input = document.getElementById("routeSearch");
-    const wrap = document.getElementById("routesWrap");
-    const empty = document.getElementById("emptyState");
-    const countEl = document.getElementById("routeCount");
-
-    if (!input || !wrap) return;
-
-    function filter() {
-      const q = (input.value || "").trim().toLowerCase();
-      const cards = wrap.querySelectorAll(".sb-route-card");
-      let shown = 0;
-
-      cards.forEach((c) => {
-        const text = c.getAttribute("data-text") || "";
-        const ok = !q || text.includes(q);
-        c.style.display = ok ? "" : "none";
-        if (ok) shown++;
-      });
-
-      countEl.textContent = shown;
-      if (empty) empty.classList.toggle("d-none", shown !== 0);
-    }
-
-    input.addEventListener("input", filter);
-    filter();
-  })();
+  window.__initialRouteId = {{ initial_route_id or 'null' }};
 </script>
+<script src="{{ url_for('static', filename='js/routes_dashboard.js') }}"></script>
 {% endblock %}

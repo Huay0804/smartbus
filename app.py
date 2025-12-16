@@ -312,16 +312,30 @@ def route_detail(tuyen_id):
 def trip_detail(trip_id):
     user = current_user()
     trip = ChuyenXe.query.get_or_404(trip_id)
-    tuyen = TuyenXe.query.get(trip.tuyen_id)
+    tuyen = trip.tuyen  # quan hệ backref từ TuyenXe -> ChuyenXe
+
+    # nếu URL có ?mode=admin thì hiểu là xem từ trang admin
     is_admin_mode = request.args.get("mode") == "admin"
+
+    # lấy trạm của tuyến để hiển thị lộ trình + map
+    danh_sach_tram = (
+        TramDung.query
+        .filter_by(tuyen_id=trip.tuyen_id)
+        .order_by(TramDung.thuTuTrenTuyen)
+        .all()
+    )
+    stops_geo = build_stops_geo(danh_sach_tram)
 
     return render_template(
         "trip_detail.html",
         trip=trip,
         tuyen=tuyen,
+        stops=danh_sach_tram,
+        stops_geo=stops_geo,
         is_admin_mode=is_admin_mode,
         user=user,
     )
+
 
 
 @app.route("/trips/<int:trip_id>/book", methods=["GET", "POST"])

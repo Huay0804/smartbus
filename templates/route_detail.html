@@ -2,92 +2,100 @@
 {% block title %}Tuyến {{ tuyen.maHienThi }} - {{ tuyen.tenTuyen }}{% endblock %}
 {% block content %}
 
-<a href="{{ url_for('routes') }}" class="btn btn-link">&laquo; Quay lại danh sách tuyến</a>
 
-<h2 class="mt-2">Tuyến {{ tuyen.maHienThi }} - {{ tuyen.tenTuyen }}</h2>
-<p>
-  <strong>Điểm bắt đầu:</strong> {{ tuyen.diemBatDau }} –
-  <strong>Điểm kết thúc:</strong> {{ tuyen.diemKetThuc }}
-</p>
-
-<div class="row mt-4">
-  <div class="col-md-6">
-    <h4>Danh sách chuyến xe</h4>
-    <table class="table table-bordered mt-2">
-      <thead>
-        <tr>
-          <th>Mã chuyến</th>
-          <th>Ngày</th>
-          <th>Giờ</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for ch in trips %}
-        <tr>
-          <td>{{ ch.maChuyen }}</td>
-          <td>{{ ch.ngayKhoiHanh }}</td>
-          <td>{{ ch.gioKhoiHanh }}</td>
-          <td>
-            <a class="btn btn-sm btn-outline-primary"
-               href="{{ url_for('trip_detail', trip_id=ch.maChuyen) }}">
-              Xem chi tiết
-            </a>
-            <a class="btn btn-sm btn-success ms-1"
-               href="{{ url_for('booking', trip_id=ch.maChuyen) }}">
-              Đặt vé
-            </a>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="4" class="text-center">
-            Chưa có chuyến nào cho tuyến này.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+  <div>
+    <h2 class="mt-1 mb-1">Tuyến {{ tuyen.maHienThi }} — {{ tuyen.tenTuyen }}</h2>
+    <div class="text-muted">
+      <strong>Điểm bắt đầu:</strong> {{ tuyen.diemBatDau or "—" }}
+      <span class="mx-1">→</span>
+      <strong>Điểm kết thúc:</strong> {{ tuyen.diemKetThuc or "—" }}
+    </div>
   </div>
-
-  <div class="col-md-6">
-    <h4>Danh sách trạm dừng</h4>
-    <table class="table table-sm table-bordered mt-2">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Tên trạm</th>
-          <th>Địa chỉ</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in stops %}
-        <tr>
-          <td>{{ s.thuTuTrenTuyen }}</td>
-          <td>{{ s.tenTram }}</td>
-          <td>{{ s.diaChi }}</td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="3" class="text-center">
-            Chưa có trạm dừng nào cho tuyến này.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
-    <!-- MAP -->
-    <div id="route-map"
-         class="border rounded mt-3"
-         style="height: 260px; overflow: hidden;"></div>
-
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const stops = {{ stops_geo|tojson|safe }};
-        renderRouteMap(stops, "route-map");
-      });
-    </script>
+  <div class="d-flex gap-2">
+    <a class="btn btn-dark" href="{{ url_for('routes') }}">Xem tuyến khác</a>
   </div>
 </div>
+
+<div class="row g-3 mt-2">
+  <div class="col-lg-6">
+    <div class="sb-box">
+      <h5 class="mb-2" id="trips">Danh sách chuyến xe</h5>
+      <div class="text-muted small mb-2">
+        * Đặt vé thực hiện trong trang <b>Chi tiết chuyến</b>.
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 90px;">Mã</th>
+              <th>Ngày</th>
+              <th>Giờ</th>
+              <th style="width: 140px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ch in trips %}
+            <tr>
+              <td class="fw-bold">#{{ ch.maChuyen }}</td>
+              <td>{{ ch.ngayKhoiHanh }}</td>
+              <td>{{ ch.gioKhoiHanh }}</td>
+              <td class="text-end">
+                <a class="btn btn-sm btn-primary"
+                   href="{{ url_for('trip_detail', trip_id=ch.maChuyen) }}">
+                  Chi tiết
+                </a>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center text-muted">
+                Tuyến này chưa có chuyến nào.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="sb-box sb-box--map">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">Bản đồ & trạm dừng</h5>
+        <span class="text-muted small">OSRM (fallback đường thẳng)</span>
+      </div>
+
+      <div id="route-map" class="border rounded" style="height: 360px; overflow:hidden;"></div>
+
+      <div class="row g-2 mt-3">
+        <div class="col-12">
+          <div class="fw-bold mb-2">Danh sách trạm</div>
+          <div class="sb-stop-list" style="max-height: 220px;">
+            <ul class="sb-stop-ul mb-0">
+              {% for s in stops %}
+              <li class="sb-stop-item">
+                <div class="fw-semibold">{{ s.thuTuTrenTuyen }}. {{ s.tenTram }}</div>
+                {% if s.diaChi %}<div class="text-muted small">{{ s.diaChi }}</div>{% endif %}
+              </li>
+              {% else %}
+              <li class="text-muted">Chưa có trạm dừng nào cho tuyến này.</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+          const stops = {{ stops_geo|tojson|safe }};
+          await renderRouteMap(stops, "route-map");
+        });
+      </script>
+    </div>
+  </div>
+</div>
+
 {% endblock %}

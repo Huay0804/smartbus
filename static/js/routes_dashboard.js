@@ -1,8 +1,11 @@
+// static/js/routes_dashboard.js
 document.addEventListener("DOMContentLoaded", () => {
-  const mapEl = document.getElementById("routes-map");
+  const mapId = "routes-map";
   const sel = document.getElementById("routeSelect");
   const search = document.getElementById("routeSearch");
   const tbody = document.getElementById("routeTableBody");
+  const empty = document.getElementById("emptyState");
+  const countEl = document.getElementById("routeCount");
 
   const titleEl = document.getElementById("selectedRouteTitle");
   const metaEl = document.getElementById("selectedRouteMeta");
@@ -14,171 +17,157 @@ document.addEventListener("DOMContentLoaded", () => {
   const kpiMapData = document.getElementById("kpiMapData");
 
   const btnDetail = document.getElementById("btnRouteDetail");
-  const btnAdminStops = document.getElementById("btnAdminStops");
-  const btnAdminTrips = document.getElementById("btnAdminTrips");
 
-  if (!mapEl || !window.L || !sel) return;
-
-  // Map init
-  const map = L.map("routes-map");
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap contributors",
-  }).addTo(map);
-
-  const markers = L.layerGroup().addTo(map);
-  let polyline = null;
+  if (!sel || !tbody) return;
 
   function escapeHtml(str) {
-    return String(str)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+    return String(str ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
-  function setRouteInfoFromSelect() {
-    const opt = sel.options[sel.selectedIndex];
-    const code = opt.dataset.code || "";
-    const name = opt.dataset.name || "";
-    const start = opt.dataset.start || "";
-    const end = opt.dataset.end || "";
+  function setInfoFromRow(row) {
+    const code = row?.dataset?.code || "";
+    const name = row?.dataset?.name || "";
+    const start = row?.dataset?.start || "";
+    const end = row?.dataset?.end || "";
 
-    if (titleEl) titleEl.textContent = `${code} — ${name}`;
-    if (metaEl) metaEl.textContent = `${start} → ${end}`;
+    if (titleEl) titleEl.textContent = code ? `Tuyến ${code} — ${name || "—"}` : (name || "—");
+    if (metaEl) metaEl.textContent = (start || end) ? `${start || "—"} → ${end || "—"}` : "—";
+  }
 
-    const routeId = sel.value;
-
-    if (btnDetail) btnDetail.href = `/routes/${routeId}`;
-    if (btnAdminStops) btnAdminStops.href = `/admin/routes/${routeId}/stops`;
-    if (btnAdminTrips) btnAdminTrips.href = `/admin/routes/${routeId}/trips`;
-
-    // highlight selected row
-    if (tbody) {
-      const rows = tbody.querySelectorAll(".route-row");
-      rows.forEach(r => r.classList.toggle("is-selected", r.dataset.routeId === String(routeId)));
-    }
+  function setDetailLink(routeId) {
+    if (!btnDetail) return;
+    btnDetail.href = routeId ? `/routes/${routeId}` : "#";
+    btnDetail.classList.toggle("disabled", !routeId);
   }
 
   function renderStopList(stops) {
     if (!stopListEl) return;
-    stopListEl.innerHTML = "";
-
     if (!stops || !stops.length) {
-      stopListEl.innerHTML = `<li class="text-muted small">Chưa có dữ liệu trạm.</li>`;
+      stopListEl.innerHTML = `<li class="text-muted">Chưa có trạm cho tuyến này.</li>`;
       return;
     }
 
-    stops.slice(0, 18).forEach((s) => {
-      const li = document.createElement("li");
-      li.className = "sb-stop-item";
-      const order = (s.order !== undefined && s.order !== null) ? s.order : "";
-      const name = s.name || "—";
-      const addr = s.address || "";
+    const items = stops
+      .slice()
+      .sort((a, b) => (Number(a.order ?? 0) - Number(b.order ?? 0)))
+      .map((s) => {
+        const hasCoord = s.lat != null && s.lng != null;
+        const badge = hasCoord
+          ? `<span class="badge text-bg-success ms-2">OK</span>`
+          : `<span class="badge text-bg-warning ms-2">Thiếu tọa độ</span>`;
+        const label = `${escapeHtml(s.order ?? "")}. ${escapeHtml(s.name ?? "")}`;
+        const addr = s.address ? `<div class="text-muted small">${escapeHtml(s.address)}</div>` : "";
+        return `<li class="sb-stop-item">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="fw-semibold">${label}${addr}</div>
+                    ${badge}
+                  </div>
+                </li>`;
+      })
+      .join("");
 
-      li.innerHTML = `
-        <div class="sb-stop-top">
-          <span class="sb-stop-order">${escapeHtml(order)}</span>
-          <span class="sb-stop-name">${escapeHtml(name)}</span>
-        </div>
-        ${addr ? `<div class="sb-stop-addr">${escapeHtml(addr)}</div>` : ``}
-      `;
-      stopListEl.appendChild(li);
-    });
-
-    if (stops.length > 18) {
-      const more = document.createElement("li");
-      more.className = "text-muted small";
-      more.textContent = `… còn ${stops.length - 18} trạm (xem đầy đủ ở trang Chi tiết tuyến).`;
-      stopListEl.appendChild(more);
-    }
+    stopListEl.innerHTML = items;
   }
 
-  async function loadRoute(routeId) {
-    setRouteInfoFromSelect();
+  async function loadStops(routeId) {
+    if (!routeId) return;
+
+    if (stopListEl) stopListEl.innerHTML = `<li class="text-muted">Đang tải trạm…</li>`;
+    if (kpiStops) kpiStops.textContent = "…";
+    if (kpiMarkers) kpiMarkers.textContent = "…";
+    if (kpiLine) kpiLine.textContent = "…";
+    if (kpiMapData) kpiMapData.textContent = "…";
 
     try {
       const res = await fetch(`/api/routes/${routeId}/stops_geo`);
       const stops = await res.json();
 
-      markers.clearLayers();
-      if (polyline) {
-        map.removeLayer(polyline);
-        polyline = null;
-      }
+      const validMarkers = (stops || []).filter(s => s.lat != null && s.lng != null).length;
 
-      const latlngs = [];
-      let validMarkers = 0;
+      if (kpiStops) kpiStops.textContent = String((stops || []).length);
+      if (kpiMarkers) kpiMarkers.textContent = String(validMarkers);
 
-      stops.forEach((s) => {
-        if (s.lat == null || s.lng == null) return;
-        const ll = [s.lat, s.lng];
-        latlngs.push(ll);
-        validMarkers++;
-
-        const label = (s.order ? `${s.order}. ` : "") + (s.name || "");
-        const popup = `<b>${escapeHtml(label)}</b>${s.address ? "<br>" + escapeHtml(s.address) : ""}`;
-        L.marker(ll).addTo(markers).bindPopup(popup);
-      });
+      if (kpiMapData) kpiMapData.textContent = (validMarkers >= 2) ? "Đủ" : "Thiếu";
+      if (kpiLine) kpiLine.textContent = (validMarkers >= 2) ? "OSRM" : "—";
 
       renderStopList(stops);
 
-      if (kpiStops) kpiStops.textContent = String(stops.length);
-      if (kpiMarkers) kpiMarkers.textContent = String(validMarkers);
-
-      // user-friendly indicator
-      if (kpiMapData) kpiMapData.textContent = (validMarkers >= 2) ? "Đủ" : "Thiếu";
-
-      if (latlngs.length >= 2) {
-        polyline = L.polyline(latlngs).addTo(map);
-        map.fitBounds(L.latLngBounds(latlngs).pad(0.2));
-        if (kpiLine) kpiLine.textContent = "Polyline";
-      } else {
-        map.setView([16.047, 108.206], 12);
-        if (kpiLine) kpiLine.textContent = "—";
+      if (typeof window.renderRouteMap === "function") {
+        await window.renderRouteMap(stops, mapId);
       }
-
-      setTimeout(() => map.invalidateSize(), 120);
     } catch (e) {
-      renderStopList([]);
+      console.error(e);
+      if (stopListEl) stopListEl.innerHTML = `<li class="text-danger">Không tải được trạm. Kiểm tra API /api/routes/${routeId}/stops_geo</li>`;
       if (kpiStops) kpiStops.textContent = "0";
       if (kpiMarkers) kpiMarkers.textContent = "0";
-      if (kpiMapData) kpiMapData.textContent = "Thiếu";
+      if (kpiMapData) kpiMapData.textContent = "—";
       if (kpiLine) kpiLine.textContent = "—";
-      map.setView([16.047, 108.206], 12);
-      setTimeout(() => map.invalidateSize(), 120);
     }
   }
 
-  // init
-  const initial = window.SB_ROUTES?.initialRouteId || sel.value;
-  if (initial) sel.value = String(initial);
-  loadRoute(sel.value);
+  function selectByRouteId(routeId) {
+    sel.value = String(routeId);
 
-  sel.addEventListener("change", () => loadRoute(sel.value));
+    const rows = tbody.querySelectorAll(".route-row");
+    rows.forEach(r => r.classList.toggle("table-active", r.dataset.routeId === String(routeId)));
 
-  // row click selects route
-  if (tbody) {
-    tbody.addEventListener("click", (ev) => {
-      const tr = ev.target.closest(".route-row");
-      if (!tr) return;
-      const routeId = tr.dataset.routeId;
-      if (!routeId) return;
-      sel.value = String(routeId);
-      loadRoute(routeId);
-    });
+    const row = tbody.querySelector(`.route-row[data-route-id="${routeId}"]`);
+    if (row) setInfoFromRow(row);
+
+    setDetailLink(routeId);
+    loadStops(routeId);
   }
 
-  // search filter
-  if (search && tbody) {
-    search.addEventListener("input", () => {
-      const q = search.value.trim().toLowerCase();
-      const rows = tbody.querySelectorAll(".route-row");
-      rows.forEach((tr) => {
-        const text = tr.getAttribute("data-text") || "";
-        tr.style.display = text.includes(q) ? "" : "none";
-      });
+  tbody.addEventListener("click", (e) => {
+    const row = e.target.closest(".route-row");
+    if (!row) return;
+    selectByRouteId(row.dataset.routeId);
+  });
+
+  sel.addEventListener("change", () => {
+    selectByRouteId(sel.value);
+  });
+
+  function applyFilter() {
+    const q = (search?.value || "").trim().toLowerCase();
+    const rows = tbody.querySelectorAll(".route-row");
+    let shown = 0;
+    let firstShownId = null;
+
+    rows.forEach((tr) => {
+      const text = tr.getAttribute("data-text") || "";
+      const ok = !q || text.includes(q);
+      tr.style.display = ok ? "" : "none";
+      if (ok) {
+        shown++;
+        if (!firstShownId) firstShownId = tr.dataset.routeId;
+      }
     });
+
+    if (countEl) countEl.textContent = String(shown);
+    if (empty) empty.classList.toggle("d-none", shown !== 0);
+
+    const currentId = sel.value;
+    const currentRow = tbody.querySelector(`.route-row[data-route-id="${currentId}"]`);
+    const currentVisible = currentRow && currentRow.style.display !== "none";
+    if (!currentVisible && firstShownId) {
+      selectByRouteId(firstShownId);
+    }
   }
+
+  if (search) search.addEventListener("input", applyFilter);
+
+  const initial = window.__initialRouteId != null ? String(window.__initialRouteId) : null;
+  if (initial && tbody.querySelector(`.route-row[data-route-id="${initial}"]`)) {
+    selectByRouteId(initial);
+  } else {
+    if (sel.value) selectByRouteId(sel.value);
+  }
+
+  applyFilter();
 });
