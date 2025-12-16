@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
 import requests
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -168,7 +169,23 @@ def inject_user():
 
 @app.route("/")
 def home():
-    return render_template("home.html", user=current_user())
+    # Home: landing nhưng có số liệu + vài tuyến nổi bật cho cảm giác "hệ thống thật"
+    stats = {
+        "routes": TuyenXe.query.count(),
+        "stops": TramDung.query.count(),
+        "trips": ChuyenXe.query.count(),
+        "tickets": VeXe.query.count(),
+    }
+
+    featured_routes = (
+        TuyenXe.query
+        .order_by(TuyenXe.maTuyen.asc())
+        .limit(6)
+        .all()
+    )
+
+    user = current_user()
+    return render_template("home.html", stats=stats, featured_routes=featured_routes, user=user)
 
 
 # ==================== ĐĂNG KÝ / ĐĂNG NHẬP ====================
@@ -219,6 +236,9 @@ def login():
     if current_user():
         return redirect(url_for("home"))
 
+    # lấy next từ query hoặc từ hidden input (POST)
+    next_url = request.form.get("next") or request.args.get("next")
+
     if request.method == "POST":
         email = request.form.get("email")
         password = request.form.get("password")
@@ -228,11 +248,17 @@ def login():
             session["user_id"] = tk.id
             session["user_role"] = tk.vai_tro
             flash("Đăng nhập thành công.")
+
+            # chống open-redirect: chỉ cho phép đường dẫn nội bộ
+            if next_url and next_url.startswith("/") and not next_url.startswith("//"):
+                return redirect(next_url)
+
             return redirect(url_for("home"))
         else:
             flash("Sai email hoặc mật khẩu.")
 
-    return render_template("login.html")
+    return render_template("login.html", next_url=next_url)
+
 
 
 @app.route("/logout")
@@ -246,9 +272,14 @@ def logout():
 
 @app.route("/routes")
 def routes():
-    danh_sach_tuyen = TuyenXe.query.all()
-    return render_template("routes.html", routes=danh_sach_tuyen)
-
+    # /routes là dashboard thao tác
+    danh_sach_tuyen = TuyenXe.query.order_by(TuyenXe.maTuyen).all()
+    initial_route_id = danh_sach_tuyen[0].maTuyen if danh_sach_tuyen else None
+    return render_template(
+        "routes.html",
+        routes=danh_sach_tuyen,
+        initial_route_id=initial_route_id,
+    )
 
 @app.route("/routes/<int:tuyen_id>")
 def route_detail(tuyen_id):
@@ -298,7 +329,7 @@ def booking(trip_id):
     user = current_user()
     if not user:
         flash("Bạn phải đăng nhập để đặt vé.")
-        return redirect(url_for("login"))
+        return redirect(url_for("login", next=request.path))
 
     trip = ChuyenXe.query.get_or_404(trip_id)
     tuyen = trip.tuyen
@@ -747,7 +778,16 @@ def api_osrm_route():
         "geometry": route.get("geometry"),
     })
 
-
+@app.route("/api/routes/<int:tuyen_id>/stops_geo")
+def api_route_stops_geo(tuyen_id):
+    tuyen = TuyenXe.query.get_or_404(tuyen_id)
+    stops = (
+        TramDung.query
+        .filter_by(tuyen_id=tuyen.maTuyen)
+        .order_by(TramDung.thuTuTrenTuyen)
+        .all()
+    )
+    return jsonify(build_stops_geo(stops))
 # ==================== MAIN ====================
 
 if __name__ == "__main__":

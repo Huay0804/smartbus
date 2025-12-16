@@ -1,37 +1,100 @@
 {% extends "base.html" %}
-{% block title %}Danh sách tuyến xe{% endblock %}
-{% block content %}
-<h2>Danh sách tuyến xe</h2>
+{% block title %}Tuyến xe{% endblock %}
 
-<table class="table table-striped mt-3">
-  <thead>
-    <tr>
-      <th>Mã tuyến</th>
-      <th>Tên tuyến</th>
-      <th>Điểm bắt đầu</th>
-      <th>Điểm kết thúc</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
+{% block content %}
+<div class="sb-page">
+
+  <div class="sb-page-head">
+    <div>
+      <h1 class="sb-page-title">Danh sách tuyến xe</h1>
+      <p class="sb-page-sub">
+        Tìm theo mã tuyến, tên tuyến, điểm bắt đầu hoặc điểm kết thúc.
+      </p>
+    </div>
+
+    <div class="sb-page-actions">
+      <a class="btn btn-outline-dark" href="{{ url_for('home') }}">Về trang tra cứu</a>
+    </div>
+  </div>
+
+  <div class="sb-toolbar">
+    <div class="sb-search">
+      <input id="routeSearch" class="form-control"
+             placeholder="VD: 01, Hội An, Tam Kỳ, Bến xe Trung tâm…"
+             value="{{ request.args.get('q','') }}">
+    </div>
+    <div class="sb-badge">
+      <span id="routeCount">{{ routes|length }}</span> tuyến
+    </div>
+  </div>
+
+  <div id="routesWrap" class="sb-route-list">
     {% for r in routes %}
-    <tr>
-      <td>{{ r.maHienThi }}</td>
-      <td>{{ r.tenTuyen }}</td>
-      <td>{{ r.diemBatDau }}</td>
-      <td>{{ r.diemKetThuc }}</td>
-      <td>
-        <a class="btn btn-sm btn-outline-primary"
-           href="{{ url_for('route_detail', tuyen_id=r.maTuyen) }}">
-          Xem chuyến
-        </a>
-      </td>
-    </tr>
+      <div class="sb-route-card"
+           data-text="{{ (r.maHienThi ~ ' ' ~ (r.tenTuyen or '') ~ ' ' ~ (r.diemBatDau or '') ~ ' ' ~ (r.diemKetThuc or ''))|lower }}">
+        <div class="sb-route-left">
+          <div class="sb-route-code">{{ r.maHienThi }}</div>
+          <div class="sb-route-main">
+            <div class="sb-route-name">{{ r.tenTuyen }}</div>
+            <div class="sb-route-meta">
+              <span class="sb-dot"></span>
+              <span>{{ r.diemBatDau or "—" }}</span>
+              <span class="sb-arrow">→</span>
+              <span>{{ r.diemKetThuc or "—" }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sb-route-right">
+          <a class="btn btn-sm btn-outline-dark"
+             href="{{ url_for('route_detail', tuyen_id=r.maTuyen) }}">
+            Chi tiết
+          </a>
+          <a class="btn btn-sm btn-primary"
+             href="{{ url_for('route_detail', tuyen_id=r.maTuyen) }}#trips">
+            Xem chuyến
+          </a>
+        </div>
+      </div>
     {% else %}
-    <tr>
-      <td colspan="5" class="text-center">Chưa có tuyến nào.</td>
-    </tr>
+      <div class="text-muted">Chưa có tuyến nào.</div>
     {% endfor %}
-  </tbody>
-</table>
+  </div>
+
+  <div id="emptyState" class="sb-empty d-none">
+    <div class="sb-empty-title">Không tìm thấy tuyến phù hợp</div>
+    <div class="sb-empty-sub">Thử từ khoá khác: “01”, “Hội An”, “Huế”…</div>
+  </div>
+
+</div>
+
+<script>
+  (function () {
+    const input = document.getElementById("routeSearch");
+    const wrap = document.getElementById("routesWrap");
+    const empty = document.getElementById("emptyState");
+    const countEl = document.getElementById("routeCount");
+
+    if (!input || !wrap) return;
+
+    function filter() {
+      const q = (input.value || "").trim().toLowerCase();
+      const cards = wrap.querySelectorAll(".sb-route-card");
+      let shown = 0;
+
+      cards.forEach((c) => {
+        const text = c.getAttribute("data-text") || "";
+        const ok = !q || text.includes(q);
+        c.style.display = ok ? "" : "none";
+        if (ok) shown++;
+      });
+
+      countEl.textContent = shown;
+      if (empty) empty.classList.toggle("d-none", shown !== 0);
+    }
+
+    input.addEventListener("input", filter);
+    filter();
+  })();
+</script>
 {% endblock %}
