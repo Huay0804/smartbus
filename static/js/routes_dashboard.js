@@ -1,9 +1,11 @@
 // static/js/routes_dashboard.js
 document.addEventListener("DOMContentLoaded", () => {
   const mapId = "routes-map";
-  const sel = document.getElementById("routeSelect");
+
+  const sel = document.getElementById("routeSelect");          // có thì dùng, không có vẫn chạy
   const search = document.getElementById("routeSearch");
   const tbody = document.getElementById("routeTableBody");
+
   const empty = document.getElementById("emptyState");
   const countEl = document.getElementById("routeCount");
 
@@ -18,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const btnDetail = document.getElementById("btnRouteDetail");
 
-  if (!sel || !tbody) return;
+  if (!tbody) return; // CHỈ cần tbody là đủ để click chọn tuyến
 
   function escapeHtml(str) {
     return String(str ?? "")
@@ -47,21 +49,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderStopList(stops) {
     if (!stopListEl) return;
+
     if (!stops || !stops.length) {
-      stopListEl.innerHTML = `<li class="text-muted">Chưa có trạm cho tuyến này.</li>`;
+      stopListEl.innerHTML = `<li class="text-muted">Chưa có dữ liệu trạm cho tuyến này.</li>`;
       return;
     }
 
     const items = stops
       .slice()
-      .sort((a, b) => (Number(a.order ?? 0) - Number(b.order ?? 0)))
+      .sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0))
       .map((s) => {
         const hasCoord = s.lat != null && s.lng != null;
         const badge = hasCoord
           ? `<span class="badge text-bg-success ms-2">OK</span>`
-          : `<span class="badge text-bg-warning ms-2">Thiếu tọa độ</span>`;
+          : `<span class="badge text-bg-warning ms-2">Thiếu</span>`;
+
         const label = `${escapeHtml(s.order ?? "")}. ${escapeHtml(s.name ?? "")}`;
         const addr = s.address ? `<div class="text-muted small">${escapeHtml(s.address)}</div>` : "";
+
         return `<li class="sb-stop-item">
                   <div class="d-flex justify-content-between align-items-start">
                     <div class="fw-semibold">${label}${addr}</div>
@@ -75,7 +80,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadStops(routeId) {
-    if (!routeId) return;
+    // Nếu routeId rỗng => clear map và clear list
+    if (!routeId) {
+      if (stopListEl) stopListEl.innerHTML = `<li class="text-muted">Chọn tuyến bên trái.</li>`;
+      if (kpiStops) kpiStops.textContent = "0";
+      if (kpiMarkers) kpiMarkers.textContent = "0";
+      if (kpiMapData) kpiMapData.textContent = "—";
+      if (kpiLine) kpiLine.textContent = "—";
+      if (typeof window.renderRouteMap === "function") await window.renderRouteMap([], mapId);
+      return;
+    }
 
     if (stopListEl) stopListEl.innerHTML = `<li class="text-muted">Đang tải trạm…</li>`;
     if (kpiStops) kpiStops.textContent = "…";
@@ -98,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
       renderStopList(stops);
 
       if (typeof window.renderRouteMap === "function") {
-        await window.renderRouteMap(stops, mapId);
+        await window.renderRouteMap(stops, mapId); // stops rỗng => maps_osrm.js sẽ reset map sạch
       }
     } catch (e) {
       console.error(e);
@@ -107,31 +121,43 @@ document.addEventListener("DOMContentLoaded", () => {
       if (kpiMarkers) kpiMarkers.textContent = "0";
       if (kpiMapData) kpiMapData.textContent = "—";
       if (kpiLine) kpiLine.textContent = "—";
+      if (typeof window.renderRouteMap === "function") await window.renderRouteMap([], mapId);
     }
   }
 
-  function selectByRouteId(routeId) {
-    sel.value = String(routeId);
+  function highlight(routeId) {
+    tbody.querySelectorAll(".route-row").forEach(r => {
+      r.classList.toggle("table-active", r.dataset.routeId === String(routeId));
+    });
+  }
 
-    const rows = tbody.querySelectorAll(".route-row");
-    rows.forEach(r => r.classList.toggle("table-active", r.dataset.routeId === String(routeId)));
+  function selectByRouteId(routeId) {
+    routeId = String(routeId);
+
+    // Nếu có select thì sync lại (không có cũng OK)
+    if (sel) sel.value = routeId;
 
     const row = tbody.querySelector(`.route-row[data-route-id="${routeId}"]`);
     if (row) setInfoFromRow(row);
 
     setDetailLink(routeId);
+    highlight(routeId);
     loadStops(routeId);
   }
 
+  // Click tuyến trong bảng
   tbody.addEventListener("click", (e) => {
     const row = e.target.closest(".route-row");
     if (!row) return;
     selectByRouteId(row.dataset.routeId);
   });
 
-  sel.addEventListener("change", () => {
-    selectByRouteId(sel.value);
-  });
+  // Nếu có dropdown thì vẫn hỗ trợ
+  if (sel) {
+    sel.addEventListener("change", () => {
+      if (sel.value) selectByRouteId(sel.value);
+    });
+  }
 
   function applyFilter() {
     const q = (search?.value || "").trim().toLowerCase();
@@ -152,21 +178,26 @@ document.addEventListener("DOMContentLoaded", () => {
     if (countEl) countEl.textContent = String(shown);
     if (empty) empty.classList.toggle("d-none", shown !== 0);
 
-    const currentId = sel.value;
-    const currentRow = tbody.querySelector(`.route-row[data-route-id="${currentId}"]`);
+    // nếu tuyến hiện tại bị ẩn, tự chọn tuyến đầu tiên còn hiện
+    const currentId = sel?.value || tbody.querySelector(".route-row.table-active")?.dataset?.routeId;
+    const currentRow = currentId ? tbody.querySelector(`.route-row[data-route-id="${currentId}"]`) : null;
     const currentVisible = currentRow && currentRow.style.display !== "none";
-    if (!currentVisible && firstShownId) {
-      selectByRouteId(firstShownId);
-    }
+
+    if (!currentVisible && firstShownId) selectByRouteId(firstShownId);
   }
 
   if (search) search.addEventListener("input", applyFilter);
 
+  // init: ưu tiên __initialRouteId, rồi sel.value, rồi row đầu tiên
   const initial = window.__initialRouteId != null ? String(window.__initialRouteId) : null;
   if (initial && tbody.querySelector(`.route-row[data-route-id="${initial}"]`)) {
     selectByRouteId(initial);
+  } else if (sel && sel.value) {
+    selectByRouteId(sel.value);
   } else {
-    if (sel.value) selectByRouteId(sel.value);
+    const first = tbody.querySelector(".route-row");
+    if (first) selectByRouteId(first.dataset.routeId);
+    else loadStops(null);
   }
 
   applyFilter();

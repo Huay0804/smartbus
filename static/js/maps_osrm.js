@@ -1,10 +1,11 @@
 // static/js/maps_osrm.js
-// Mục tiêu: override renderRouteMap(stops, mapId) để vẽ đường thật bằng OSRM.
-// stops: [{lat,lng,name,address,order}, ...]
-// Yêu cầu: Leaflet đã được load (L exists)
+// Vẽ route bằng OSRM theo đúng thứ tự stop (order). Nếu không có stop => reset map sạch.
 
 (function () {
   const maps = {}; // cache map instances theo mapId
+
+  const DEFAULT_CENTER = [16.047079, 108.206230]; // Đà Nẵng
+  const DEFAULT_ZOOM = 12;
 
   function destroyMap(mapId) {
     if (maps[mapId]) {
@@ -20,9 +21,7 @@
       body: JSON.stringify({ coords: latlngs }),
     });
     const data = await res.json();
-    if (!res.ok || !data.ok) {
-      throw new Error(data.error || "OSRM failed");
-    }
+    if (!res.ok || !data.ok) throw new Error(data.error || "OSRM failed");
     return data; // {distance_m, duration_s, geometry}
   }
 
@@ -40,20 +39,15 @@
     map.fitBounds(latlngs, { padding: [20, 20] });
   }
 
-  // fallback: vẽ đường thẳng nối các điểm
   function drawStraightLine(map, latlngs) {
-    if (latlngs.length >= 2) {
-      L.polyline(latlngs).addTo(map);
-    }
+    if (latlngs.length >= 2) L.polyline(latlngs).addTo(map);
   }
 
-  // chuyển GeoJSON LineString (lng,lat) -> Leaflet latlng
   function geoJsonLineToLatLng(geometry) {
     if (!geometry || geometry.type !== "LineString" || !Array.isArray(geometry.coordinates)) return [];
     return geometry.coordinates.map(c => [c[1], c[0]]);
   }
 
-  // cố gắng route 1 lần; nếu fail thì route theo từng cặp (chắc chắn chạy, nhưng nhiều request)
   async function drawRouteOSRM(map, latlngs) {
     if (latlngs.length < 2) return;
 
@@ -66,7 +60,6 @@
       console.warn("OSRM full route failed, fallback pairwise:", e.message);
     }
 
-    // fallback pairwise: route từng đoạn (i -> i+1)
     for (let i = 0; i < latlngs.length - 1; i++) {
       const seg = [latlngs[i], latlngs[i + 1]];
       try {
@@ -81,16 +74,24 @@
     }
   }
 
-  // === HÀM CHÍNH: override renderRouteMap ===
+  // === HÀM CHÍNH ===
   window.renderRouteMap = async function (stops, mapId) {
     if (!window.L) {
       console.error("Leaflet chưa được load: L is undefined");
       return;
     }
-    if (!mapId) {
-      console.error("Thiếu mapId");
-      return;
-    }
+    if (!mapId) return;
+
+    // LUÔN reset map để không bị dính marker tuyến cũ
+    destroyMap(mapId);
+
+    const map = L.map(mapId);
+    maps[mapId] = map;
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
 
     const pts = (stops || [])
       .filter(s => s && s.lat != null && s.lng != null)
@@ -104,26 +105,17 @@
       .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    if (pts.length === 0) return;
-
-    destroyMap(mapId);
-
-    const map = L.map(mapId);
-    maps[mapId] = map;
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap contributors",
-    }).addTo(map);
+    // Không có stop => map sạch + center ĐN
+    if (pts.length === 0) {
+      map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+      return;
+    }
 
     addMarkers(map, pts);
 
     const latlngs = pts.map(p => [p.lat, p.lng]);
     fitBounds(map, latlngs);
 
-    // vẽ route thật
-    if (latlngs.length >= 2) {
-      await drawRouteOSRM(map, latlngs);
-    }
+    if (latlngs.length >= 2) await drawRouteOSRM(map, latlngs);
   };
 })();

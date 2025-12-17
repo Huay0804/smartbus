@@ -1,47 +1,28 @@
 {% extends "base.html" %}
-{% block title %}Tuyến xe{% endblock %}
+{% block title %}Tuyến xe buýt{% endblock %}
 
 {% block content %}
-<div class="sb-page">
-  <div class="sb-page-head">
-    <div>
-      <h1 class="sb-page-title">Tuyến xe buýt (demo)</h1>
-      <p class="sb-page-sub mb-0">
-        Chọn tuyến để xem trạm và vẽ lộ trình trên bản đồ (OSRM). Dữ liệu đang mô phỏng cho môn học.
-      </p>
-    </div>
-    <div class="sb-page-actions">
-      <a class="btn btn-outline-dark" href="{{ url_for('home') }}">Về trang tra cứu</a>
-    </div>
-  </div>
+<div class="container py-4">
+  <h1 class="text-center mb-4">Tuyến xe buýt (demo)</h1>
 
   <div class="row g-3">
+    <!-- LEFT: danh sách tuyến -->
     <div class="col-lg-4">
-      <div class="sb-box">
+      <div class="sb-box p-3 border rounded bg-white">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div class="fw-bold">Danh sách tuyến</div>
           <span class="badge text-bg-dark"><span id="routeCount">{{ routes|length }}</span> tuyến</span>
         </div>
 
-        <div class="mb-2">
-          <input id="routeSearch"
-                 class="form-control"
-                 placeholder="Tìm: 01, Hội An, Bến xe Trung tâm…"
-                 value="{{ request.args.get('q','') }}">
-        </div>
+        <input id="routeSearch" class="form-control form-control-sm mb-2" placeholder="Tìm: 01, Hội An, Bến xe Trung tâm..." />
 
-        <div class="mb-2">
-          <select id="routeSelect" class="form-select">
-            {% for r in routes %}
-              <option value="{{ r.maTuyen }}">
-                {{ r.maHienThi }} — {{ r.tenTuyen or 'Chưa đặt tên' }}
-              </option>
-            {% endfor %}
-          </select>
-          <div class="form-text">
-            Tip: Bạn có thể click trực tiếp dòng trong bảng bên dưới.
-          </div>
-        </div>
+        <!-- Có thể giữ hoặc bỏ select này; JS vẫn chạy -->
+        <select id="routeSelect" class="form-select form-select-sm mb-2">
+          {% for r in routes %}
+            <option value="{{ r.maTuyen }}">{{ r.maHienThi }} — {{ r.tenTuyen or 'Chưa đặt tên' }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text mb-2">Tip: Bạn có thể click trực tiếp dòng trong bảng bên dưới.</div>
 
         <div class="table-responsive" style="max-height: 430px; overflow:auto;">
           <table class="table table-sm table-hover align-middle mb-0">
@@ -64,9 +45,7 @@
                 <td class="fw-bold">{{ r.maHienThi }}</td>
                 <td>
                   <div class="fw-semibold">{{ r.tenTuyen or "—" }}</div>
-                  <div class="text-muted small">
-                    {{ r.diemBatDau or "—" }} → {{ r.diemKetThuc or "—" }}
-                  </div>
+                  <div class="text-muted small">{{ r.diemBatDau or "—" }} → {{ r.diemKetThuc or "—" }}</div>
                 </td>
               </tr>
               {% else %}
@@ -82,8 +61,9 @@
       </div>
     </div>
 
+    <!-- MID: map -->
     <div class="col-lg-5">
-      <div class="sb-box sb-box--map">
+      <div class="sb-box p-3 border rounded bg-white">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div class="fw-bold">Bản đồ tuyến</div>
           <div class="text-muted small">* Vẽ theo trạm có tọa độ</div>
@@ -92,49 +72,48 @@
       </div>
     </div>
 
+    <!-- RIGHT: info -->
     <div class="col-lg-3">
-      <div class="sb-box">
+      <div class="sb-box p-3 border rounded bg-white">
         <div class="fw-bold mb-1" id="selectedRouteTitle">Chưa chọn tuyến</div>
         <div class="text-muted small mb-3" id="selectedRouteMeta">—</div>
 
         <div class="row g-2 mb-3">
           <div class="col-6">
-            <div class="sb-kpi">
-              <div class="sb-kpi-label">Số trạm</div>
-              <div class="sb-kpi-value" id="kpiStops">0</div>
+            <div class="border rounded p-2">
+              <div class="text-muted small">Số trạm</div>
+              <div class="fw-bold" id="kpiStops">0</div>
             </div>
           </div>
           <div class="col-6">
-            <div class="sb-kpi">
-              <div class="sb-kpi-label">Marker hợp lệ</div>
-              <div class="sb-kpi-value" id="kpiMarkers">0</div>
+            <div class="border rounded p-2">
+              <div class="text-muted small">Marker hợp lệ</div>
+              <div class="fw-bold" id="kpiMarkers">0</div>
             </div>
           </div>
           <div class="col-6">
-            <div class="sb-kpi">
-              <div class="sb-kpi-label">Vẽ tuyến</div>
-              <div class="sb-kpi-value" id="kpiLine">—</div>
+            <div class="border rounded p-2">
+              <div class="text-muted small">Vẽ tuyến</div>
+              <div class="fw-bold" id="kpiLine">—</div>
             </div>
           </div>
           <div class="col-6">
-            <div class="sb-kpi">
-              <div class="sb-kpi-label">Dữ liệu map</div>
-              <div class="sb-kpi-value" id="kpiMapData">—</div>
+            <div class="border rounded p-2">
+              <div class="text-muted small">Dữ liệu map</div>
+              <div class="fw-bold" id="kpiMapData">—</div>
             </div>
           </div>
         </div>
 
-        <div class="d-grid gap-2 mb-3">
-          <a id="btnRouteDetail" class="btn btn-primary" href="#">Xem chi tiết tuyến</a>
-          <a class="btn btn-outline-dark" href="{{ url_for('home') }}">Về trang chủ</a>
-        </div>
+        <a id="btnRouteDetail" class="btn btn-primary w-100 mb-2 disabled" href="#">Xem chi tiết tuyến</a>
+        <a class="btn btn-outline-secondary w-100" href="{{ url_for('home') }}">Về trang chủ</a>
+
+        <hr>
 
         <div class="fw-bold mb-2">Danh sách trạm</div>
-        <div class="sb-stop-list">
-          <ul class="sb-stop-ul mb-0" id="stopList">
-            <li class="text-muted">Chọn một tuyến để tải trạm.</li>
-          </ul>
-        </div>
+        <ul id="stopList" class="list-unstyled mb-0" style="max-height: 240px; overflow:auto;">
+          <li class="text-muted">Chọn tuyến bên trái.</li>
+        </ul>
 
         <div class="text-muted small mt-2">
           “Marker hợp lệ” = trạm có lat/lng. Nếu &lt; 2 thì không thể vẽ tuyến.
@@ -144,8 +123,10 @@
   </div>
 </div>
 
-<script>
-  window.__initialRouteId = {{ initial_route_id or 'null' }};
-</script>
+<!-- Leaflet (nếu base.html của bạn chưa có) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="{{ url_for('static', filename='js/maps_osrm.js') }}"></script>
 <script src="{{ url_for('static', filename='js/routes_dashboard.js') }}"></script>
 {% endblock %}

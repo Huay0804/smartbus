@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
+from sqlalchemy import or_   # NEW
 import requests
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -57,6 +58,10 @@ class TuyenXe(db.Model):
     tenTuyen = db.Column(db.String(100))
     diemBatDau = db.Column(db.String(100))
     diemKetThuc = db.Column(db.String(100))
+    giaVe = db.Column(db.String(50))             # ví dụ: "7.000đ/lượt"
+    soChuyenMoiNgay = db.Column(db.Integer)      # số chuyến mỗi ngày
+    thoiGianHoatDong = db.Column(db.String(100)) # ví dụ: "05:30 – 19:00"
+    ghiChu = db.Column(db.Text)                  # tùy chọn, thông tin thêm
 
     chuyen_xes = db.relationship("ChuyenXe", backref="tuyen", lazy=True)
     tram_dungs = db.relationship(
@@ -119,7 +124,7 @@ class TramDung(db.Model):
     thuTuTrenTuyen = db.Column(db.Integer, nullable=False)
     lat = db.Column(db.Float, nullable=False)
     lng = db.Column(db.Float, nullable=False)
-
+    huong = db.Column(db.String(10))
     tuyen_id = db.Column(db.Integer, db.ForeignKey("tuyen_xe.maTuyen"), nullable=False)
     tuyen = db.relationship("TuyenXe", back_populates="tram_dungs")
 
@@ -156,9 +161,11 @@ def build_stops_geo(tram_dungs):
             "lat": float(s.lat) if s.lat is not None else None,
             "lng": float(s.lng) if s.lng is not None else None,
             "order": s.thuTuTrenTuyen,
+            "dir": (s.huong or "").upper() if hasattr(s, "huong") else None,
         }
         for s in tram_dungs
     ]
+
 
 @app.context_processor
 def inject_user():
@@ -284,27 +291,17 @@ def routes():
 @app.route("/routes/<int:tuyen_id>")
 def route_detail(tuyen_id):
     tuyen = TuyenXe.query.get_or_404(tuyen_id)
+    trips = ChuyenXe.query.filter_by(tuyen_id=tuyen_id).all()
 
-    danh_sach_chuyen = (
-        ChuyenXe.query
-        .filter_by(tuyen_id=tuyen.maTuyen)
-        .order_by(ChuyenXe.maChuyen)
-        .all()
-    )
-    danh_sach_tram = (
-        TramDung.query
-        .filter_by(tuyen_id=tuyen.maTuyen)
-        .order_by(TramDung.thuTuTrenTuyen)
-        .all()
-    )
+    stops_di = TramDung.query.filter_by(tuyen_id=tuyen_id, huong="DI").order_by(TramDung.thuTuTrenTuyen).all()
+    stops_ve = TramDung.query.filter_by(tuyen_id=tuyen_id, huong="VE").order_by(TramDung.thuTuTrenTuyen).all()
 
-    stops_geo = build_stops_geo(danh_sach_tram)
     return render_template(
         "route_detail.html",
         tuyen=tuyen,
-        trips=danh_sach_chuyen,
-        stops=danh_sach_tram,
-        stops_geo=stops_geo,
+        trips=trips,
+        stops_di=stops_di,
+        stops_ve=stops_ve
     )
 
 
@@ -551,11 +548,17 @@ def admin_route_stops(tuyen_id):
 
     if request.method == "POST":
         ma_tram = request.form.get("maTram")
-        ten_tram = request.form.get("tenTram")
-        dia_chi = request.form.get("diaChi")
+        ten_tram = (request.form.get("tenTram") or "").strip()
+        dia_chi = (request.form.get("diaChi") or "").strip()
         thu_tu = request.form.get("thuTuTrenTuyen")
         lat = request.form.get("lat")
         lng = request.form.get("lng")
+
+        # NEW: hướng DI/VE
+        huong = (request.form.get("huong") or "DI").strip().upper()
+        if huong not in ("DI", "VE"):
+            flash("Hướng phải là DI hoặc VE.")
+            return redirect(url_for("admin_route_stops", tuyen_id=tuyen_id))
 
         if not ten_tram or not lat or not lng or not thu_tu:
             flash("Vui lòng nhập đầy đủ tên trạm, vị trí và thứ tự.")
@@ -569,6 +572,7 @@ def admin_route_stops(tuyen_id):
                 tram.thuTuTrenTuyen = int(thu_tu)
                 tram.lat = float(lat)
                 tram.lng = float(lng)
+                tram.huong = huong  # NEW
                 db.session.commit()
                 flash("Đã cập nhật trạm dừng.")
             else:
@@ -580,6 +584,7 @@ def admin_route_stops(tuyen_id):
                 thuTuTrenTuyen=int(thu_tu),
                 lat=float(lat),
                 lng=float(lng),
+                huong=huong,  # NEW
                 tuyen_id=tuyen_id,
             )
             db.session.add(tram)
@@ -588,12 +593,14 @@ def admin_route_stops(tuyen_id):
 
         return redirect(url_for("admin_route_stops", tuyen_id=tuyen_id))
 
+    # NEW: sort theo huong rồi theo thuTu
     danh_sach_tram = (
         TramDung.query
         .filter_by(tuyen_id=tuyen_id)
-        .order_by(TramDung.thuTuTrenTuyen)
+        .order_by(TramDung.huong, TramDung.thuTuTrenTuyen)
         .all()
     )
+
     stops_geo = build_stops_geo(danh_sach_tram)
 
     return render_template(
@@ -603,6 +610,7 @@ def admin_route_stops(tuyen_id):
         stops_geo=stops_geo,
         edit_stop=edit_stop,
     )
+
 
 
 @app.route("/admin/routes/<int:tuyen_id>/stops/<int:tram_id>/delete", methods=["POST"])
@@ -795,12 +803,22 @@ def api_osrm_route():
 @app.route("/api/routes/<int:tuyen_id>/stops_geo")
 def api_route_stops_geo(tuyen_id):
     tuyen = TuyenXe.query.get_or_404(tuyen_id)
-    stops = (
-        TramDung.query
-        .filter_by(tuyen_id=tuyen.maTuyen)
-        .order_by(TramDung.thuTuTrenTuyen)
-        .all()
-    )
+
+    dir_ = (request.args.get("dir") or "DI").strip().upper()
+    if dir_ not in ("DI", "VE"):
+        dir_ = "DI"
+
+    q = TramDung.query.filter(TramDung.tuyen_id == tuyen.maTuyen)
+
+    # Backward compatible:
+    # - DI: lấy huong=DI hoặc NULL (phòng trường hợp dữ liệu cũ chưa set huong)
+    # - VE: lấy huong=VE
+    if dir_ == "DI":
+        q = q.filter(or_(TramDung.huong == "DI", TramDung.huong.is_(None)))
+    else:
+        q = q.filter(TramDung.huong == "VE")
+
+    stops = q.order_by(TramDung.thuTuTrenTuyen.asc(), TramDung.maTram.asc()).all()
     return jsonify(build_stops_geo(stops))
 # ==================== MAIN ====================
 
