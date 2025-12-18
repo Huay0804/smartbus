@@ -25,7 +25,7 @@ if db_url and db_url.startswith("postgres://"):
 
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url or ("sqlite:///" + os.path.join(BASE_DIR, "smartbus.db"))
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "change-this-secret")
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "08082004258046121011")
 
 db = SQLAlchemy(app)
 OSRM_BASE_URL = os.getenv("OSRM_BASE_URL", "https://router.project-osrm.org").rstrip("/")
@@ -167,19 +167,37 @@ with app.app_context():
     db.create_all()
 
     if not TaiKhoan.query.filter_by(vai_tro="ADMIN").first():
-        admin_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@smartbus.local")
-        admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
-        admin = TaiKhoan(
-            email=admin_email,
-            mat_khau_hash=generate_password_hash(admin_password),
-            vai_tro="ADMIN"
-        )
+        dialect = None
         try:
-            db.session.add(admin)
-            db.session.commit()
-        except IntegrityError:
-            # Gunicorn nhiều worker có thể init đồng thời -> ignore nếu admin đã được tạo ở worker khác.
-            db.session.rollback()
+            dialect = db.engine.dialect.name
+        except Exception:
+            dialect = None
+
+        # Local/demo (SQLite): auto tạo admin mặc định cho dễ dùng.
+        # Production (Postgres/MySQL/...): chỉ tạo admin nếu bạn set env, tránh mật khẩu mặc định.
+        admin_email = os.getenv("DEFAULT_ADMIN_EMAIL")
+        admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD")
+
+        if dialect == "sqlite":
+            admin_email = admin_email or "admin@smartbus.local"
+            admin_password = admin_password or "admin123"
+
+        if not admin_email or not admin_password:
+            # Không tạo admin nếu thiếu credential (đặc biệt quan trọng khi deploy).
+            # Bạn vẫn có thể đăng ký user thường và/hoặc tạo admin qua DB.
+            pass
+        else:
+            admin = TaiKhoan(
+                email=admin_email,
+                mat_khau_hash=generate_password_hash(admin_password),
+                vai_tro="ADMIN"
+            )
+            try:
+                db.session.add(admin)
+                db.session.commit()
+            except IntegrityError:
+                # Gunicorn nhiều worker có thể init đồng thời -> ignore nếu admin đã được tạo ở worker khác.
+                db.session.rollback()
 
 # SQLite alter helpers: add missing columns / indexes without migrations
 def ensure_schema():
