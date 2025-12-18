@@ -72,3 +72,47 @@ Bạn có thể bắt đầu bằng cách seed lại các tuyến/trạm (đủ 
 docker build -t smartbus .
 docker run -p 8000:8000 -e SECRET_KEY=... -e DATABASE_URL=... smartbus
 ```
+
+---
+
+## Deploy lên Azure (khuyến nghị)
+Mục tiêu: **Azure App Service (Linux) + Azure Database for PostgreSQL (Flexible Server)** để dữ liệu không bị mất.
+
+### A) Tạo PostgreSQL và lấy `DATABASE_URL`
+1) Azure Portal → **Create a resource** → **Azure Database for PostgreSQL flexible server**.
+2) Tạo server xong → vào **Databases** → tạo database (vd: `smartbus`).
+3) Vào **Networking**:
+   - Public access (hoặc private nếu bạn cấu hình VNet).
+   - **Allow public access from your client IP** (để bạn seed/import từ máy local).
+   - Có thể bật **Allow Azure services** nếu App Service truy cập theo kiểu public.
+4) Vào **Connect** / **Connection strings** → copy thông tin host/user/password.
+5) `DATABASE_URL` dạng (khuyên dùng SSL):
+   ```
+   postgresql://<USER>:<PASSWORD>@<HOST>:5432/<DBNAME>?sslmode=require
+   ```
+   Ví dụ host thường là: `<server-name>.postgres.database.azure.com`
+
+### B) Tạo Web App (App Service) và cấu hình chạy Flask
+1) Azure Portal → **Create a resource** → **Web App**.
+2) Publish: **Code** (hoặc **Docker Container** nếu bạn muốn chạy Dockerfile).
+3) Runtime stack: **Python 3.11**.
+4) Tạo xong → vào Web App → **Configuration** → **Application settings** → Add:
+   - `SECRET_KEY` (chuỗi random dài)
+   - `DATABASE_URL` (ở bước A)
+   - `DEFAULT_ADMIN_EMAIL`
+   - `DEFAULT_ADMIN_PASSWORD` (đặt mạnh)
+5) Vào **Configuration** → **General settings** → **Startup Command**:
+   ```
+   gunicorn wsgi:app --bind 0.0.0.0:${PORT:-8000}
+   ```
+6) Deploy code:
+   - Cách dễ: **Deployment Center** → GitHub → chọn repo/branch → Save → chờ build.
+
+### C) Seed dữ liệu lên Azure Postgres (chạy từ máy bạn)
+Vì `scripts/seed_stops_from_csv.py` import `app.py`, bạn chỉ cần trỏ env về Azure Postgres rồi chạy seed:
+```powershell
+$env:DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DBNAME?sslmode=require"
+python scripts/seed_stops_from_csv.py --csv data/stops_tuyen_01.csv --route-code 01 --mode upsert
+```
+
+Gợi ý: tạo tuyến trước (Admin → Tuyến) rồi seed trạm sau.
