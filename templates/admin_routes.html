@@ -17,7 +17,7 @@
 </div>
 
 <div class="sb-box mb-3">
-  <form method="post" class="row g-3 align-items-end">
+  <form method="post" class="row g-3">
     <input type="hidden" name="maTuyen" value="{{ edit_route.maTuyen if edit_route else '' }}">
 
     <div class="col-lg-3">
@@ -41,7 +41,33 @@
              value="{{ edit_route.diemKetThuc if edit_route else '' }}">
     </div>
 
-    <div class="col-12 col-lg-2 d-grid">
+    <div class="col-lg-2">
+      <label class="form-label mb-1">Khoảng cách (km)</label>
+      <input class="form-control" name="khoangCachKm" type="number" step="0.1" min="0" placeholder="VD: 34.5"
+             value="{{ edit_route.khoangCachKm if edit_route and edit_route.khoangCachKm is not none else '' }}">
+    </div>
+    <div class="col-lg-3">
+      <label class="form-label mb-1">Thời gian hoạt động</label>
+      <input class="form-control" name="thoiGianHoatDong" placeholder="VD: 05:30 - 17:50"
+             value="{{ edit_route.thoiGianHoatDong if edit_route else '' }}">
+    </div>
+    <div class="col-lg-2">
+      <label class="form-label mb-1">Tần suất (phút/chuyến)</label>
+      <input class="form-control" name="tanSuatPhut" type="number" step="1" min="1" placeholder="VD: 20"
+             value="{{ edit_route.tanSuatPhut if edit_route and edit_route.tanSuatPhut is not none else '' }}">
+    </div>
+    <div class="col-lg-2">
+      <label class="form-label mb-1">Chuyến/ngày <span class="text-muted small">(DI+VE)</span></label>
+      <input class="form-control" name="soChuyenMoiNgay" type="number" step="1" min="1" placeholder="VD: 76"
+             value="{{ edit_route.soChuyenMoiNgay if edit_route and edit_route.soChuyenMoiNgay is not none else '' }}">
+    </div>
+    <div class="col-lg-3">
+      <label class="form-label mb-1">Giá vé</label>
+      <input class="form-control" name="giaVe" placeholder="VD: 18.000 đ"
+             value="{{ edit_route.giaVe if edit_route else '' }}">
+    </div>
+
+    <div class="col-12 col-lg-2 d-grid ms-auto align-self-end">
       <button class="btn btn-primary">
         {{ "Cập nhật tuyến" if edit_route else "Thêm tuyến" }}
       </button>
@@ -58,12 +84,12 @@
     <table class="table table-sm table-hover align-middle mb-0">
       <thead class="table-light">
         <tr>
-          <th>ID</th>
-          <th>Mã</th>
-          <th>Tên tuyến</th>
-          <th>Điểm bắt đầu</th>
-          <th>Điểm kết thúc</th>
-          <th class="text-end">Thao tác</th>
+          <th style="width:60px;">ID</th>
+          <th style="width:80px;">Mã</th>
+          <th style="min-width:220px;">Tên tuyến</th>
+          <th style="min-width:180px;">Điểm bắt đầu</th>
+          <th style="min-width:180px;">Điểm kết thúc</th>
+          <th style="width:220px;" class="text-end">Thao tác</th>
         </tr>
       </thead>
       <tbody>
@@ -74,18 +100,20 @@
           <td>{{ r.tenTuyen }}</td>
           <td>{{ r.diemBatDau }}</td>
           <td>{{ r.diemKetThuc }}</td>
-          <td class="text-end d-flex justify-content-end gap-1 flex-wrap">
-            <a class="btn btn-sm btn-outline-secondary"
-               href="{{ url_for('admin_route_stops', tuyen_id=r.maTuyen) }}">Trạm</a>
-            <a class="btn btn-sm btn-outline-secondary"
-               href="{{ url_for('admin_route_trips', tuyen_id=r.maTuyen) }}">Chuyến</a>
-            <a class="btn btn-sm btn-outline-primary"
-               href="{{ url_for('admin_routes', edit=r.maTuyen) }}">Sửa</a>
-            <form method="post"
-                  action="{{ url_for('delete_route', tuyen_id=r.maTuyen) }}"
-                  onsubmit="return confirm('Xóa tuyến này? (chỉ xóa được khi đã xóa hết chuyến và trạm)');">
-              <button class="btn btn-sm btn-outline-danger">Xóa</button>
-            </form>
+          <td class="text-end">
+            <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+              <a class="btn btn-sm btn-outline-secondary"
+                 href="{{ url_for('admin_route_stops', tuyen_id=r.maTuyen) }}">Trạm</a>
+              <a class="btn btn-sm btn-outline-secondary"
+                 href="{{ url_for('admin_route_trips', tuyen_id=r.maTuyen) }}">Chuyến</a>
+              <a class="btn btn-sm btn-outline-primary"
+                 href="{{ url_for('admin_routes', edit=r.maTuyen) }}">Sửa</a>
+              <form method="post"
+                    action="{{ url_for('delete_route', tuyen_id=r.maTuyen) }}"
+                    onsubmit="return confirm('Xóa tuyến này? (chỉ xóa được khi đã xóa hết chuyến và trạm)');">
+                <button class="btn btn-sm btn-outline-danger">Xóa</button>
+              </form>
+            </div>
           </td>
         </tr>
         {% else %}

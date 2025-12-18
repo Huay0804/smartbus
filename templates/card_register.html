@@ -1,18 +1,26 @@
 {% extends "base.html" %}
 {% block title %}Đăng ký thẻ xe{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
-  <div>
-    <h2 class="mb-1">Đăng ký thẻ xe</h2>
-    <div class="text-muted">Tạo thẻ định danh khách hàng, trạng thái chờ kích hoạt.</div>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div class="d-flex align-items-center gap-3">
+    <div class="sb-ic" aria-hidden="true">🪪</div>
+    <div>
+      <h2 class="mb-0">Đăng ký thẻ xe</h2>
+      <div class="text-muted small">Đăng ký thẻ tháng/quý/năm và chờ admin xác nhận thanh toán để kích hoạt.</div>
+    </div>
   </div>
-  <a class="btn btn-outline-secondary" href="{{ url_for('cards') }}">Xem thẻ đã đăng ký</a>
+  <a class="btn btn-outline-secondary" href="{{ url_for('cards') }}">Thẻ của tôi</a>
 </div>
 
 <div class="row g-3">
   <div class="col-lg-6">
     <div class="sb-box">
-      <h5 class="mb-2">Thông tin đăng ký</h5>
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <h5 class="mb-1">Thông tin đăng ký</h5>
+          <div class="text-muted small">Chủ thẻ: {{ khach_hang.hoTen or user.email }}</div>
+        </div>
+      </div>
       <form method="post">
         <div class="mb-3">
           <label class="form-label">Loại thẻ</label>
@@ -37,7 +45,7 @@
             <option value="BANK">Chuyển khoản</option>
             <option value="OTHER">Khác</option>
           </select>
-          <div class="form-text">Hiện tại là thu tiền thủ công, admin sẽ kiểm tra và kích hoạt.</div>
+          <div class="form-text">Hiện tại là thu tiền thủ công: admin sẽ đánh dấu đã nhận tiền và kích hoạt thẻ.</div>
         </div>
 
         <div class="mb-3">
@@ -52,6 +60,9 @@
 
         <div class="d-grid gap-2">
           <button type="submit" class="btn btn-success">Đăng ký thẻ</button>
+          <div class="text-muted small">
+            Tip: nếu chọn chuyển khoản, hãy điền nội dung/mã giao dịch để admin đối soát nhanh.
+          </div>
         </div>
       </form>
     </div>
@@ -70,10 +81,19 @@
                   Loại: {{ c.loaiThe or '—' }} —
                   Hiệu lực: {{ c.ngayBatDau or '—' }} → {{ c.ngayHetHan or '—' }}
                 </div>
+                <div class="text-muted small">
+                  Thanh toán: {{ c.payment_status or '—' }}{% if c.payment_method %} ({{ c.payment_method }}){% endif %}
+                </div>
               </div>
-              <span class="badge text-bg-{{ 'success' if c.trangThai == 'KICH_HOAT' else 'warning' if c.trangThai == 'CHO_KICH_HOAT' else 'secondary' }}">
-                {{ c.trangThai or '—' }}
-              </span>
+              <div class="d-flex flex-column align-items-end gap-1">
+                <span class="badge text-bg-{{ 'success' if c.trangThai == 'KICH_HOAT' else 'warning' if c.trangThai == 'CHO_KICH_HOAT' else 'secondary' }}">
+                  {{ c.trangThai or '—' }}
+                </span>
+                {% set pay = (c.payment_status or '').upper() %}
+                <span class="badge text-bg-{{ 'success' if pay == 'DA_THANH_TOAN' else 'warning' if pay == 'CHO_THANH_TOAN' else 'secondary' }}">
+                  {{ c.payment_status or '—' }}
+                </span>
+              </div>
             </div>
           {% endfor %}
         </div>

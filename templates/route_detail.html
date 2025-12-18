@@ -13,13 +13,13 @@
       </div>
     </div>
     <div class="d-flex flex-wrap gap-2">
-      <a class="btn btn-outline-secondary" href="{{ url_for('routes') }}">Xem tuyến khác</a>
+      <a class="btn btn-dark" href="{{ url_for('routes') }}">Xem các tuyến khác</a>
     </div>
   </div>
 
   <div class="row g-3">
     <div class="col-lg-8 d-flex flex-column gap-3">
-      <div class="sb-box sb-box--map">
+      <div class="sb-box sb-box--map h-100">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h5 class="mb-0">Bản đồ tuyến</h5>
           <div class="btn-group btn-group-sm" role="group" aria-label="direction toggle">
@@ -29,11 +29,11 @@
         </div>
 
         <div class="text-muted small mb-2">
-          Tách riêng DI/VE. Khi đổi hướng hoặc dữ liệu rỗng, bản đồ và danh sách sẽ được reset sạch để tránh dính tuyến cũ.
+          Mô tả đường đi phỏng đoán của xe buýt ở lượt đi / lượt về trong tuyến.
         </div>
 
         <div class="sb-map-wrapper">
-          <div id="route-map" class="border rounded sb-map" style="height: 420px; overflow:hidden;"></div>
+          <div id="route-map" class="border rounded sb-map"></div>
           <div id="mapLoading" class="sb-map-loading d-none">
             <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
             <span class="ms-2">Đang tải dữ liệu...</span>
@@ -41,50 +41,17 @@
         </div>
         <div id="directionStatus" class="alert alert-info py-2 px-3 mt-2 d-none"></div>
       </div>
-
-      <div class="sb-box">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <h5 class="mb-0">Chuyến trong ngày</h5>
-          <span class="badge text-bg-light">{{ trips|length }} chuyến</span>
-        </div>
-        <div class="text-muted small mb-2">
-          Chọn chuyến để xem chi tiết hoặc đặt vé. Đổi sang tài khoản khách nếu không muốn dùng quyền admin.
-        </div>
-
-        {% if trips %}
-          <div class="list-group sb-trip-list">
-            {% for trip in trips %}
-              <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                  <div class="fw-semibold">Chuyến #{{ trip.maChuyen }}</div>
-                  <div class="text-muted small">{{ trip.ngayKhoiHanh }} — {{ trip.gioKhoiHanh }}</div>
-                </div>
-                <div class="d-flex flex-wrap gap-2">
-                  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('trip_detail', trip_id=trip.maChuyen) }}">Chi tiết</a>
-                  {% if user %}
-                    <a class="btn btn-sm btn-success" href="{{ url_for('booking', trip_id=trip.maChuyen) }}">Đặt vé</a>
-                  {% else %}
-                    <a class="btn btn-sm btn-dark" href="{{ url_for('login', next=url_for('booking', trip_id=trip.maChuyen)) }}">Đăng nhập để đặt</a>
-                  {% endif %}
-                </div>
-              </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="alert alert-light border mb-0">Chưa có lịch chuyến cho tuyến này.</div>
-        {% endif %}
-      </div>
     </div>
 
     <div class="col-lg-4">
-      <div class="sb-box sb-sticky-panel">
+      <div class="sb-box sb-sticky-panel d-flex flex-column">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h5 class="mb-0" id="stopsTitle">Danh sách trạm (Lượt đi)</h5>
           <span class="badge text-bg-secondary" id="stopCountBadge">0</span>
         </div>
 
         <div class="small text-muted mb-2">
-          Sử dụng API /api/routes/{{ tuyen.maTuyen }}/stops_geo?dir=DI|VE. Xử lý race condition bằng request id, luôn clear map/list trước khi vẽ.
+          Danh sách các trạm theo lượt đi / lượt về của tuyến xe buýt.
         </div>
 
         <div id="stopsEmpty" class="text-muted small">Chưa tải dữ liệu.</div>
@@ -119,6 +86,6 @@
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{{ url_for('static', filename='js/maps_osrm.js') }}"></script>
-<script src="{{ url_for('static', filename='js/route_detail_map.js') }}"></script>
+<script src="{{ static_url('js/maps_osrm.js') }}"></script>
+<script src="{{ static_url('js/route_detail_map.js') }}"></script>
 {% endblock %}

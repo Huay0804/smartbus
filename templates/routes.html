@@ -1,14 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Tuyến xe buýt{% endblock %}
+{% block page_container_class %}container-fluid{% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="py-4 px-3 sb-routes-wrap">
   <h1 class="text-center mb-4">Tuyến xe buýt (demo)</h1>
 
-  <div class="row g-3 align-items-stretch">
+  <div class="sb-routes-grid">
     <!-- LEFT: danh sách tuyến -->
-    <div class="col-lg-4">
-      <div class="sb-box p-3 border rounded bg-white h-100">
+    <div class="sb-routes-left">
+      <div class="sb-box p-3 border rounded bg-white h-100 d-flex flex-column">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div class="fw-bold">Danh sách tuyến</div>
           <span class="badge text-bg-dark"><span id="routeCount">{{ routes|length }}</span> tuyến</span>
@@ -19,20 +20,14 @@
           <input id="routeSearch" class="form-control" placeholder="Tìm: 01, Hội An, Bến xe Trung tâm..." />
         </div>
 
-        <div class="d-flex flex-wrap gap-2 mb-2" id="statusChips">
-          <button class="btn btn-outline-secondary btn-sm chip-filter active" data-filter="">Tất cả</button>
-          <button class="btn btn-outline-success btn-sm chip-filter" data-filter="DU">Đủ dữ liệu</button>
-          <button class="btn btn-outline-warning btn-sm chip-filter" data-filter="THIEU">Thiếu dữ liệu</button>
-        </div>
-
         <select id="routeSelect" class="form-select form-select-sm mb-2">
           {% for r in routes %}
             <option value="{{ r.maTuyen }}">{{ r.maHienThi }} — {{ r.tenTuyen or 'Chưa đặt tên' }}</option>
           {% endfor %}
         </select>
-        <div class="form-text mb-2">Tip: bạn có thể click trực tiếp dòng trong bảng bên dưới.</div>
+        <div class="form-text mb-2"> Hãy chọn tuyến theo nhu cầu của bạn.</div>
 
-        <div class="table-responsive" style="max-height: 460px; overflow:auto;">
+        <div class="table-responsive sb-scroll-fill">
           <table class="table table-sm table-hover align-middle mb-0">
             <thead class="table-light" style="position: sticky; top: 0;">
               <tr>
@@ -70,33 +65,21 @@
       </div>
     </div>
 
-    <!-- MID: Bus overview instead of map -->
-    <div class="col-lg-4">
-      <div class="sb-box p-4 border rounded bg-white h-100 bus-hero">
-        <div class="d-flex align-items-center mb-3">
-          <div class="bus-hero__icon me-3">🚌</div>
-          <div>
-            <div class="fw-bold fs-5">Bus Overview Panel</div>
-            <div class="text-muted small">Kiến trúc CNPM: thông tin chung, không phụ thuộc bản đồ.</div>
-          </div>
+    <!-- MID: Overview map (selected route only) -->
+    <div class="sb-routes-mid">
+      <div class="sb-box sb-box--map h-100">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="mb-0">Bản đồ tổng quan</h5>
+          <span class="text-muted small">Tuyến đang chọn</span>
         </div>
-        <div class="bus-hero__card p-3 mb-2">
-          <div class="fw-semibold">Lộ trình mô tả</div>
-          <div class="text-muted small">
-            Chọn tuyến ở bảng bên trái để xem KPI dữ liệu, trạng thái toạ độ và chuyển sang trang chi tiết khi cần demo map.
-          </div>
-        </div>
-        <ul class="text-muted small mb-0 ps-3">
-          <li>Tách rõ 2 hướng DI/VE, tránh dính dữ liệu khi đổi.</li>
-          <li>Khi API lỗi/thiếu trạm: panel vẫn sạch, không hiển thị dữ liệu cũ.</li>
-          <li>OSRM và danh sách trạm chỉ hiển thị trong trang chi tiết tuyến.</li>
-        </ul>
+        <div id="routes-overview-map" class="sb-map"></div>
+        <div id="overviewMapStatus" class="alert alert-secondary py-2 px-3 mt-2 d-none"></div>
       </div>
     </div>
 
     <!-- RIGHT: Route KPI -->
-    <div class="col-lg-4">
-      <div class="sb-box p-3 border rounded bg-white h-100" id="routeSummaryPanel">
+    <div class="sb-routes-right">
+      <div class="sb-box p-3 border rounded bg-white h-100 d-flex flex-column" id="routeSummaryPanel">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <div>
             <div class="fw-bold" id="selectedRouteTitle">Chưa chọn tuyến</div>
@@ -136,38 +119,27 @@
           </div>
         </div>
 
-        <a id="btnRouteDetail" class="btn btn-primary w-100 mb-2 disabled" href="#">Xem chi tiết tuyến</a>
-        <a class="btn btn-outline-secondary w-100" href="{{ url_for('home') }}">Về trang chủ</a>
+        <div class="border rounded p-2 mb-3">
+          <div class="fw-semibold mb-1">Thông tin tuyến</div>
+          <div class="small text-muted">Khoảng cách: <span id="routeDistance">—</span></div>
+          <div class="small text-muted">Thời gian hoạt động: <span id="routeHours">—</span></div>
+          <div class="small text-muted">Tần suất: <span id="routeFreq">—</span></div>
+          <div class="small text-muted">Giá vé: <span id="routeFare">—</span></div>
+        </div>
+
+        <div class="mt-3">
+          <a id="btnRouteDetail" class="btn btn-primary w-100 mb-2 disabled" href="#">Xem chi tiết tuyến</a>
+          <a class="btn btn-outline-secondary w-100" href="{{ url_for('home') }}">Về trang chủ</a>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<style>
-  .bus-hero {
-    position: relative;
-    background: linear-gradient(135deg, #f7fbff 0%, #eef2ff 100%);
-  }
-  .bus-hero__icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 14px;
-    display: grid;
-    place-items: center;
-    font-size: 32px;
-    background: #0d6efd;
-    color: #fff;
-  }
-  .bus-hero__card {
-    border: 1px dashed #cdd5f5;
-    border-radius: 12px;
-    background: #fff;
-  }
-</style>
-
 <script>
   window.__initialRouteId = {{ initial_route_id|default('null') }};
 </script>
 
-<script src="{{ url_for('static', filename='js/routes_dashboard.js') }}"></script>
+<script src="{{ static_url('js/routes_overview_map.js') }}"></script>
+<script src="{{ static_url('js/routes_dashboard.js') }}"></script>
 {% endblock %}

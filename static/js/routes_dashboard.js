@@ -1,5 +1,5 @@
 // static/js/routes_dashboard.js
-// Trang /routes: hiển thị KPI tổng quan, không render bản đồ tại đây.
+// Controller cho trang /routes: chọn tuyến, load KPI và đồng bộ bản đồ tổng quan.
 
 document.addEventListener("DOMContentLoaded", () => {
   const sel = document.getElementById("routeSelect");
@@ -17,15 +17,28 @@ document.addEventListener("DOMContentLoaded", () => {
   const kpiStopsVEGeo = document.getElementById("kpiStopsVEGeo");
   const kpiGeoPercent = document.getElementById("kpiGeoPercent");
   const errorAlert = document.getElementById("routeSummaryError");
-  const chipContainer = document.getElementById("statusChips");
   const badgeDI = document.getElementById("badgeDI");
   const badgeVE = document.getElementById("badgeVE");
+  const infoDistance = document.getElementById("routeDistance");
+  const infoHours = document.getElementById("routeHours");
+  const infoFreq = document.getElementById("routeFreq");
+  const infoFare = document.getElementById("routeFare");
+
+  const tripCountBadge = document.getElementById("tripCountBadge");
+  const routeTripsEmpty = document.getElementById("routeTripsEmpty");
+  const routeTripsList = document.getElementById("routeTripsList");
+  const hasTripsPanel = !!routeTripsList;
 
   const btnDetail = document.getElementById("btnRouteDetail");
 
   if (!tbody) return;
 
+  if (window.SBRouteOverview && typeof window.SBRouteOverview.init === "function") {
+    window.SBRouteOverview.init("routes-overview-map");
+  }
+
   let requestSeq = 0;
+  let tripsSeq = 0;
 
   function escapeHtml(str) {
     return String(str ?? "")
@@ -60,11 +73,91 @@ document.addEventListener("DOMContentLoaded", () => {
     if (kpiGeoPercent) kpiGeoPercent.textContent = "0%";
     if (badgeDI) badgeDI.className = "badge text-bg-secondary";
     if (badgeVE) badgeVE.className = "badge text-bg-secondary";
+    if (infoDistance) infoDistance.textContent = "—";
+    if (infoHours) infoHours.textContent = "—";
+    if (infoFreq) infoFreq.textContent = "—";
+    if (infoFare) infoFare.textContent = "—";
     if (statusEl) {
       statusEl.textContent = "—";
       statusEl.className = "badge text-bg-secondary";
     }
     if (errorAlert) errorAlert.classList.add("d-none");
+  }
+
+  function resetTrips(message = "Chưa tải dữ liệu.") {
+    if (tripCountBadge) tripCountBadge.textContent = "0";
+    if (routeTripsEmpty) {
+      routeTripsEmpty.textContent = message;
+      routeTripsEmpty.classList.remove("d-none");
+    }
+    if (routeTripsList) {
+      routeTripsList.classList.add("d-none");
+      routeTripsList.innerHTML = "";
+    }
+  }
+
+  function showTripsLoading() {
+    if (tripCountBadge) tripCountBadge.textContent = "…";
+    if (routeTripsEmpty) {
+      routeTripsEmpty.textContent = "Đang tải...";
+      routeTripsEmpty.classList.remove("d-none");
+    }
+    if (routeTripsList) {
+      routeTripsList.classList.add("d-none");
+      routeTripsList.innerHTML = "";
+    }
+  }
+
+  function renderTrips(items) {
+    const list = routeTripsList;
+    if (!list) return;
+
+    list.innerHTML = "";
+
+    const safeItems = Array.isArray(items) ? items : [];
+    if (tripCountBadge) tripCountBadge.textContent = String(safeItems.length);
+
+    if (!safeItems.length) {
+      if (routeTripsEmpty) {
+        routeTripsEmpty.textContent = "Chưa có chuyến sắp tới.";
+        routeTripsEmpty.classList.remove("d-none");
+      }
+      list.classList.add("d-none");
+      return;
+    }
+
+    if (routeTripsEmpty) routeTripsEmpty.classList.add("d-none");
+    list.classList.remove("d-none");
+
+    const frag = document.createDocumentFragment();
+
+    safeItems.forEach((t) => {
+      const tripId = t?.trip_id;
+      const date = t?.date || "";
+      const time = t?.time || "";
+      const dir = t?.direction || "";
+
+      const item = document.createElement("a");
+      item.className = "list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2";
+      item.href = t?.detail_url || "#";
+
+      const left = document.createElement("div");
+      const title = document.createElement("div");
+      title.className = "fw-semibold";
+      title.textContent = time || (tripId ? `Chuyến #${tripId}` : "Chuyến");
+
+      const meta = document.createElement("div");
+      meta.className = "text-muted small";
+      meta.textContent = [date, dir].filter(Boolean).join(" • ") || "—";
+
+      left.appendChild(title);
+      left.appendChild(meta);
+
+      item.appendChild(left);
+      frag.appendChild(item);
+    });
+
+    list.appendChild(frag);
   }
 
   function showLoading() {
@@ -111,6 +204,13 @@ document.addEventListener("DOMContentLoaded", () => {
       badgeVE.textContent = ok ? "OK" : "Thiếu";
       badgeVE.className = "badge " + (ok ? "text-bg-success" : "text-bg-warning");
     }
+    if (infoDistance) infoDistance.textContent = data.distance_km ? `${data.distance_km} km` : "—";
+    if (infoHours) infoHours.textContent = data.operating_hours || "—";
+    if (infoFreq) {
+      const freq = data.frequency_min ? `${data.frequency_min} p/chuyến` : (data.trips_per_day ? `${data.trips_per_day} chuyến/ngày` : "—");
+      infoFreq.textContent = freq;
+    }
+    if (infoFare) infoFare.textContent = data.fare || "—";
 
     if (errorAlert) errorAlert.classList.add("d-none");
   }
@@ -151,6 +251,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  async function loadTrips(routeId) {
+    if (!routeId) {
+      resetTrips("Chưa tải dữ liệu.");
+      return;
+    }
+
+    tripsSeq += 1;
+    const seq = tripsSeq;
+    showTripsLoading();
+
+    try {
+      const res = await fetch(`/api/routes/${routeId}/trips?limit=12`);
+      const data = await res.json();
+
+      if (seq !== tripsSeq) return;
+      if (!res.ok || !data?.ok) throw new Error("API trips lỗi");
+
+      renderTrips(data.items || []);
+    } catch (e) {
+      if (seq !== tripsSeq) return;
+      console.error(e);
+      resetTrips("Không tải được chuyến.");
+    }
+  }
+
   function highlight(routeId) {
     tbody.querySelectorAll(".route-row").forEach((r) => {
       r.classList.toggle("table-active", r.dataset.routeId === String(routeId));
@@ -167,6 +292,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     highlight(routeId);
     loadSummary(routeId);
+    if (hasTripsPanel) loadTrips(routeId);
+    if (window.SBRouteOverview && typeof window.SBRouteOverview.setRoute === "function") {
+      window.SBRouteOverview.setRoute(routeId, "routes-overview-map");
+    }
   }
 
   tbody.addEventListener("click", (e) => {
@@ -183,7 +312,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function applyFilter() {
     const q = (search?.value || "").trim().toLowerCase();
-    const filterStatus = chipContainer?.querySelector(".chip-filter.active")?.dataset?.filter || "";
+    const filterStatus = "";
     const rows = tbody.querySelectorAll(".route-row");
     let shown = 0;
     let firstShownId = null;
@@ -211,15 +340,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (search) search.addEventListener("input", applyFilter);
-  if (chipContainer) {
-    chipContainer.addEventListener("click", (e) => {
-      const btn = e.target.closest(".chip-filter");
-      if (!btn) return;
-      chipContainer.querySelectorAll(".chip-filter").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      applyFilter();
-    });
-  }
+  // no status chip filter now
 
   const initial = window.__initialRouteId != null ? String(window.__initialRouteId) : null;
   if (initial && tbody.querySelector(`.route-row[data-route-id="${initial}"]`)) {
@@ -229,7 +350,10 @@ document.addEventListener("DOMContentLoaded", () => {
   } else {
     const first = tbody.querySelector(".route-row");
     if (first) selectByRouteId(first.dataset.routeId);
-    else resetSummary();
+    else {
+      resetSummary();
+      if (hasTripsPanel) resetTrips("Chưa tải dữ liệu.");
+    }
   }
 
   applyFilter();

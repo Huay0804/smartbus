@@ -1,5 +1,8 @@
 // static/js/route_detail_map.js
-// Trang chi tiết tuyến: vẽ map + danh sách trạm theo từng hướng với chống race condition.
+// Controller cho trang chi tiết tuyến:
+// - đổi hướng DI/VE
+// - reset sạch khi chuyển tuyến/hướng (tránh dính dữ liệu cũ)
+// - chống race condition khi click nhanh
 
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.getElementById("routeDetailPage");
@@ -74,15 +77,25 @@ document.addEventListener("DOMContentLoaded", () => {
       const safeAddr = s.address || s.diaChi || "";
       const lat = s.lat != null ? Number(s.lat) : null;
       const lng = s.lng != null ? Number(s.lng) : null;
+      const stopId = s.id ?? s.stop_id ?? null;
       li.dataset.lat = lat;
       li.dataset.lng = lng;
+      const etaTime = s.eta_time || s.etaTime || null;
+      const etaInMin = s.eta_in_min ?? s.etaInMin ?? null;
+
+      const stopLink = stopId ? `/stops/${stopId}` : null;
       li.innerHTML = `
-        <div class="fw-semibold">${s.order ?? idx + 1}. ${safeName}</div>
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div class="fw-semibold">${s.order ?? idx + 1}. ${safeName}</div>
+          ${stopLink ? `<a class="badge text-bg-light text-decoration-none" href="${stopLink}">Chi tiết trạm</a>` : ""}
+        </div>
         ${safeAddr ? `<div class="text-muted small">${safeAddr}</div>` : ""}
+        ${etaTime ? `<div class="text-muted small">Dự kiến tới: <b>${etaTime}</b>${etaInMin != null ? ` (còn ${etaInMin}p)` : ""}</div>` : ""}
       `;
       if (Number.isFinite(lat) && Number.isFinite(lng) && typeof window.focusStopOnMap === "function") {
         li.style.cursor = "pointer";
-        li.addEventListener("click", () => {
+        li.addEventListener("click", (e) => {
+          if (e?.target?.closest?.("a")) return;
           window.focusStopOnMap(mapId, lat, lng, 16);
         });
       }
@@ -133,6 +146,26 @@ document.addEventListener("DOMContentLoaded", () => {
       updateKpis(stops);
 
       if (typeof window.renderRouteMap === "function") await window.renderRouteMap(stops, mapId);
+
+      // ETA dự kiến tại từng trạm (theo lịch + OSRM/fallback). Không block map.
+      try {
+        const etaRes = await fetch(`/api/routes/${routeId}/stop_etas?dir=${dir}`);
+        const etaData = await etaRes.json();
+        if (seq === requestSeq && etaRes.ok && etaData?.ok && Array.isArray(etaData.items)) {
+          const etaMap = new Map(etaData.items.map((it) => [String(it.stop_id), it]));
+          stops.forEach((s) => {
+            const it = etaMap.get(String(s.id ?? s.stop_id ?? ""));
+            if (it) {
+              s.eta_time = it.eta_time;
+              const mins = typeof it.eta_in_min === "number" ? it.eta_in_min : null;
+              s.eta_in_min = mins != null ? Math.max(0, mins) : null;
+            }
+          });
+          renderStops(stops);
+        }
+      } catch (e) {
+        // ignore ETA errors; map/list vẫn hoạt động bình thường
+      }
 
       if (!stops.length) {
         showStatus("Lượt này chưa có trạm hoặc đang trống dữ liệu.", "secondary");

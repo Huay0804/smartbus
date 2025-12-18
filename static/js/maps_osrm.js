@@ -1,5 +1,8 @@
 // static/js/maps_osrm.js
-// Vẽ route bằng OSRM theo đúng thứ tự stop (order). Nếu không có stop => reset map sạch.
+// Các helper Leaflet cho SmartBus:
+// - `renderRouteMap`: vẽ tuyến theo thứ tự trạm (OSRM + fallback)
+// - `renderStopsMap`: chỉ hiển thị marker trạm (không vẽ tuyến)
+// - `focusStopOnMap`: zoom tới 1 trạm khi người dùng click trong danh sách
 
 (function () {
   const maps = {}; // cache map instances theo mapId
@@ -41,7 +44,8 @@
 
   function fitBounds(map, latlngs) {
     if (!latlngs.length) return;
-    map.fitBounds(latlngs, { padding: [20, 20] });
+    // Tránh zoom quá sát (khó thấy điểm đầu/cuối) và chừa padding để marker không sát mép.
+    map.fitBounds(latlngs, { padding: [36, 36], maxZoom: 14 });
   }
 
   function drawStraightLine(map, latlngs) {
@@ -125,14 +129,57 @@
     if (latlngs.length >= 2) await drawRouteOSRM(map, latlngs);
   };
 
+  // Chỉ hiển thị marker trạm (không vẽ tuyến OSRM)
+  window.renderStopsMap = async function (stops, mapId) {
+    if (!window.L) {
+      console.error("Leaflet chưa được load: L is undefined");
+      return;
+    }
+    if (!mapId) return;
+
+    destroyMap(mapId);
+
+    const map = L.map(mapId);
+    maps[mapId] = map;
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
+
+    const pts = (stops || [])
+      .filter(s => s && s.lat != null && s.lng != null)
+      .map(s => ({
+        lat: Number(s.lat),
+        lng: Number(s.lng),
+        name: s.name || s.tenTram || "",
+        address: s.address || s.diaChi || "",
+        order: Number(s.order ?? s.thuTuTrenTuyen ?? 0),
+      }))
+      .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    if (!pts.length) {
+      map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+      return;
+    }
+
+    const markers = addMarkers(map, pts);
+    mapStops[mapId] = markers;
+
+    const latlngs = pts.map(p => [p.lat, p.lng]);
+    fitBounds(map, latlngs);
+  };
+
   // Zoom vào một tọa độ/marker trên map nếu có
   window.focusStopOnMap = function (mapId, lat, lng, zoom = 16) {
     if (!maps[mapId] || lat == null || lng == null) return;
     const map = maps[mapId];
+    const targetZoom = Math.max(map.getZoom() || 0, Math.min(Number(zoom) || 16, 18));
     const markerEntry = (mapStops[mapId] || []).find(
       (m) => Math.abs(m.lat - lat) < 1e-6 && Math.abs(m.lng - lng) < 1e-6
     );
-    map.setView([lat, lng], zoom);
+    map.flyTo([lat, lng], targetZoom, { duration: 0.35 });
     if (markerEntry && markerEntry.marker) {
       markerEntry.marker.openPopup();
     }

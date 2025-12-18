@@ -22,18 +22,26 @@
         <input type="hidden" name="action" value="{{ 'edit_trip' if edit_trip else 'add_trip' }}">
         <input type="hidden" name="trip_id" value="{{ edit_trip.maChuyen if edit_trip else '' }}">
 
-        <div class="col-md-5">
+        <div class="col-md-4">
           <label class="form-label mb-1">Ngày khởi hành</label>
           <input class="form-control" name="ngayKhoiHanh" placeholder="YYYY-MM-DD"
                  value="{{ edit_trip.ngayKhoiHanh if edit_trip else '' }}">
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label mb-1">Giờ khởi hành</label>
           <input class="form-control" name="gioKhoiHanh" placeholder="HH:MM"
                  value="{{ edit_trip.gioKhoiHanh if edit_trip else '' }}">
         </div>
+        <div class="col-md-3">
+          <label class="form-label mb-1">Hướng</label>
+          {% set current_dir = (edit_trip.huong if edit_trip else 'DI') %}
+          <select class="form-select" name="huong">
+            <option value="DI" {% if current_dir == 'DI' %}selected{% endif %}>DI (Lượt đi)</option>
+            <option value="VE" {% if current_dir == 'VE' %}selected{% endif %}>VE (Lượt về)</option>
+          </select>
+        </div>
 
-        <div class="col-md-3 d-grid">
+        <div class="col-md-2 d-grid">
           <button class="btn btn-primary">
             {{ "Cập nhật chuyến" if edit_trip else "Thêm chuyến" }}
           </button>
@@ -52,6 +60,7 @@
               <th>ID</th>
               <th>Ngày</th>
               <th>Giờ</th>
+              <th>Hướng</th>
               <th class="text-end">Thao tác</th>
             </tr>
           </thead>
@@ -61,6 +70,7 @@
               <td>#{{ trip.maChuyen }}</td>
               <td>{{ trip.ngayKhoiHanh }}</td>
               <td>{{ trip.gioKhoiHanh }}</td>
+              <td><span class="badge text-bg-light">{{ trip.huong or 'DI' }}</span></td>
               <td class="text-end d-flex justify-content-end gap-1 flex-wrap">
                 <a class="btn btn-sm btn-outline-secondary"
                    href="{{ url_for('trip_detail', trip_id=trip.maChuyen, mode='admin') }}">
@@ -81,7 +91,7 @@
             </tr>
             {% else %}
             <tr>
-              <td colspan="4" class="text-center text-muted">Chưa có chuyến nào.</td>
+              <td colspan="5" class="text-center text-muted">Chưa có chuyến nào.</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -89,18 +99,32 @@
       </div>
     </div>
   </div>
-  <div class="col-lg-5">
+  <div class="col-lg-5 d-flex flex-column">
     <div class="sb-box mb-3">
       <h5 class="mb-2">Bản đồ trạm (read-only)</h5>
       <div id="stops-map" class="border rounded sb-map" style="height: 420px;"></div>
     </div>
-    <div class="sb-box">
-      <h5 class="mb-2">Danh sách trạm</h5>
-      <div class="sb-stop-list" style="max-height: 220px;">
+    <div class="sb-box d-flex flex-column flex-grow-1">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">Danh sách trạm</h5>
+        <span class="text-muted small">DI/VE</span>
+      </div>
+      <div class="sb-stop-list sb-stop-list--fill">
         <ul class="sb-stop-ul mb-0">
           {% for s in stops %}
-            <li class="sb-stop-item">
-              <div class="fw-semibold">{{ s.thuTuTrenTuyen }}. {{ s.tenTram }}</div>
+            {% set dir = (s.huong or 'DI')|upper %}
+            <li class="sb-stop-item sb-stop-item--click js-stop-zoom"
+                data-lat="{{ s.lat }}" data-lng="{{ s.lng }}">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div class="fw-semibold">
+                  <span class="badge text-bg-{{ 'success' if dir == 'DI' else 'secondary' }} me-2">{{ dir }}</span>
+                  {{ s.thuTuTrenTuyen }}. {{ s.tenTram }}
+                </div>
+                <a class="badge text-bg-light text-decoration-none"
+                   href="{{ url_for('stop_detail', stop_id=s.maTram) }}">
+                  Trạm
+                </a>
+              </div>
               <div class="text-muted small">{{ s.diaChi or "" }}</div>
             </li>
           {% else %}
@@ -112,11 +136,21 @@
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/maps_osrm.js') }}"></script>
+<script src="{{ static_url('js/maps_osrm.js') }}"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     const stops = {{ stops_geo|tojson|safe }};
-    renderRouteMap(stops, "stops-map");
+    if (typeof renderStopsMap === "function") renderStopsMap(stops, "stops-map");
+
+    document.querySelectorAll(".js-stop-zoom").forEach((el) => {
+      const lat = Number(el.dataset.lat);
+      const lng = Number(el.dataset.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      el.addEventListener("click", (e) => {
+        if (e?.target?.closest?.("a")) return;
+        if (typeof focusStopOnMap === "function") focusStopOnMap("stops-map", lat, lng, 16);
+      });
+    });
   });
 </script>
 {% endblock %}

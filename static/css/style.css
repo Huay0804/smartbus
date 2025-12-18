@@ -8,6 +8,102 @@
   border-bottom: 1px solid rgba(11,18,32,0.06);
 }
 
+.sb-brand-logo{
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+/* ===== Auth (login/register) ===== */
+.sb-auth-wrap{
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.sb-auth-card{
+  display: grid;
+  grid-template-columns: 0.95fr 1.05fr;
+  overflow: hidden;
+}
+
+.sb-auth-aside{
+  padding: 26px 22px;
+  color: rgba(255,255,255,0.92);
+  background:
+    radial-gradient(800px 400px at 20% 20%, rgba(53,208,127,0.22), transparent 60%),
+    radial-gradient(700px 380px at 80% 10%, rgba(13,110,253,0.30), transparent 55%),
+    linear-gradient(135deg, #0b1220 0%, #102a66 60%, #0b1220 100%);
+}
+
+.sb-auth-logo{
+  height: 34px;
+  width: auto;
+  display: block;
+}
+
+.sb-auth-aside h3{
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px 0;
+  color: #fff;
+}
+
+.sb-auth-aside p{
+  margin: 0 0 14px 0;
+  color: rgba(255,255,255,0.76);
+}
+
+.sb-auth-pills{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.sb-auth-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08);
+  font-size: 13px;
+  color: rgba(255,255,255,0.90);
+}
+
+.sb-auth-form{
+  padding: 22px;
+}
+
+.sb-auth-form h2{
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.sb-auth-form .input-group-text{
+  background: rgba(11,18,32,0.03);
+  border-color: rgba(11,18,32,0.10);
+}
+
+.sb-auth-help{
+  color: rgba(11,18,32,0.60);
+  font-size: 13px;
+}
+
+@media (max-width: 991.98px){
+  .sb-auth-card{
+    grid-template-columns: 1fr;
+  }
+  .sb-auth-aside{
+    padding: 20px 18px;
+  }
+  .sb-auth-form{
+    padding: 18px;
+  }
+}
+
+
 /* ===== Layout cards / boxes ===== */
 .sb-box{
   background: #fff;
@@ -98,8 +194,41 @@
   padding: 8px 10px;
 }
 
+.sb-stop-list--fill{
+  max-height: none;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.sb-trip-panel{
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sb-trip-panel-body{
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.sb-map--fill{
+  height: 100%;
+}
+
+@media (min-width: 992px){
+  /* Giữ 2 panel map/list cùng chiều cao, tránh dài quá mức */
+  .sb-trip-panel{
+    height: clamp(460px, 60vh, 620px);
+  }
+
+  /* Khi panel đã có chiều cao cố định thì mới bỏ min-height mặc định của .sb-map */
+  .sb-trip-panel .sb-map--fill{
+    min-height: 0;
+  }
+}
+
 .sb-stop-scroll{
-  max-height: 480px;
+  max-height: 420px;
   overflow-y: auto;
   padding-right: 6px;
 }
@@ -115,6 +244,13 @@
 }
 .sb-stop-item:last-child{
   border-bottom: none;
+}
+.sb-stop-item--click{
+  cursor: pointer;
+}
+.sb-stop-item--click:hover{
+  background: rgba(13,110,253,0.05);
+  border-radius: 10px;
 }
 
 .sb-stop-top{
@@ -173,6 +309,10 @@
 
 .sb-map-wrapper{
   position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .sb-map-loading{
   position: absolute;
@@ -185,6 +325,23 @@
   flex-wrap: wrap;
   gap: 8px;
   z-index: 5;
+}
+
+.leaflet-container{
+  /* Giảm cảm giác “sọc trắng” do seam giữa tile ở một số trình duyệt / fractional scaling */
+  background: #e5e3df;
+}
+.leaflet-container img{
+  /* Nếu có CSS global (hoặc class) làm ảnh co giãn, tile sẽ bị hở kẽ -> sọc trắng */
+  max-width: none !important;
+  max-height: none !important;
+}
+.leaflet-container .leaflet-tile{
+  outline: 1px solid transparent;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  /* Overlap nhẹ để tránh đường kẻ trắng giữa tile (đặc biệt khi Windows display scaling / browser zoom) */
+  margin: -1px;
 }
 
 .sb-table-scroll{
@@ -323,7 +480,7 @@
     position: static;
   }
   .sb-stop-scroll{
-    max-height: none;
+    max-height: 320px;
   }
 }
 
@@ -518,6 +675,81 @@
 .sb-section{
   background: transparent;
 }
+
+/* ===== /routes dashboard grid ===== */
+.sb-routes-wrap{
+  margin: 0 auto;
+  width: 100%;
+  max-width: 2100px;
+}
+@media (min-width: 1200px){
+  .sb-routes-wrap{
+    width: clamp(1200px, 67vw, 2100px);
+  }
+}
+
+.sb-routes-grid{
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(520px, 1fr) minmax(320px, 420px);
+  gap: 18px;
+  align-items: stretch;
+  /* Giữ dashboard gọn trong màn hình: list/trips sẽ scroll bên trong */
+  height: min(67vh, 720px);
+  min-height: 0;
+}
+
+.sb-routes-left,
+.sb-routes-mid,
+.sb-routes-right{
+  min-width: 0;
+  min-height: 0;
+}
+
+.sb-routes-grid > *{
+  min-height: 0;
+}
+
+.sb-routes-left .sb-box,
+.sb-routes-mid .sb-box,
+.sb-routes-right .sb-box{
+  min-height: 0;
+}
+
+.sb-scroll-fill{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.sb-routes-mid .sb-map{ min-height: 0; }
+.sb-routes-mid #routes-overview-map{
+  height: 100%;
+}
+
+@media (max-width: 1200px){
+  .sb-routes-grid{
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .sb-routes-mid .sb-map{ min-height: 360px; }
+}
+
+/* ===== Leaflet: endpoint marker (overview) ===== */
+.sb-endpoint{
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 13px;
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.20);
+  border: 2px solid rgba(255,255,255,0.92);
+}
+.sb-endpoint--start{ background: #16a34a; }
+.sb-endpoint--end{ background: #dc2626; }
 
 .sb-section-head{
   display:flex;

@@ -20,20 +20,17 @@
       </form>
 
       <div class="sb-user-actions">
-        <a class="btn btn-outline-dark" href="{{ url_for('routes') }}">Xem tất cả tuyến</a>
+        <a class="btn btn-dark" href="{{ url_for('routes') }}">Xem tất cả tuyến</a>
 
         {% if user %}
-          <a class="btn btn-outline-dark" href="{{ url_for('tickets') }}">Vé / hoá đơn của tôi</a>
-        {% else %}
-          <a class="btn btn-dark" href="{{ url_for('login') }}">Đăng nhập</a>
-          <a class="btn btn-outline-dark" href="{{ url_for('register') }}">Đăng ký</a>
+          <a class="btn btn-outline-dark" href="{{ url_for('cards') }}">Thẻ xe của tôi</a>
         {% endif %}
       </div>
 
       <div class="sb-user-hints">
         <div class="sb-hint"><span class="sb-hint-dot"></span> Xem tuyến trên bản đồ</div>
         <div class="sb-hint"><span class="sb-hint-dot"></span> Xem chi tiết trạm</div>
-        <div class="sb-hint"><span class="sb-hint-dot"></span> Đặt vé theo chuyến (nếu có dữ liệu)</div>
+        <div class="sb-hint"><span class="sb-hint-dot"></span> Xem giờ chạy & tần suất</div>
       </div>
     </div>
 

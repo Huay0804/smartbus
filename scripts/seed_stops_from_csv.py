@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Seed stops into SmartBus database from CSV.
+Nạp (seed) danh sách trạm dừng vào DB SmartBus từ file CSV.
 
-CSV columns (header required):
-route_code,direction,stop_order,stop_name,address,lat,lng
+Cột CSV (bắt buộc có header):
+  route_code,direction,stop_order,stop_name,address,lat,lng
 
-- direction must be DI or VE
-- route_code is your display code (e.g., "01") stored in TuyenXe.maHienThi (adjust if yours differs)
+- direction chỉ nhận DI hoặc VE
+- route_code là mã hiển thị tuyến (vd: "01"), map vào `TuyenXe.maHienThi` (nếu project bạn khác thì chỉnh lại)
 
 Usage:
   python seed_stops_from_csv.py --csv data/stops_tuyen_01.csv --route-code 01 --mode upsert
   python seed_stops_from_csv.py --csv data/stops_tuyen_01.csv --route-code 01 --mode replace
 
-Behavior with bad/missing coords:
-- Default: WARN + skip bad rows (so you can seed the rest)
-- If you want to fail fast: add --strict-coords
+Khi toạ độ thiếu/sai:
+- Mặc định: WARN và bỏ qua dòng lỗi (để còn nạp được phần còn lại)
+- Nếu muốn fail-fast: thêm `--strict-coords`
 """
 
 import argparse
@@ -43,8 +43,8 @@ def warn(msg: str) -> None:
 
 def load_app():
     """
-    Try to import your Flask app + db + models.
-    You may need to edit these imports to match your project.
+    Import Flask app + db + models.
+    Nếu project bạn không giống cấu trúc mặc định, hãy chỉnh phần import bên dưới.
     """
     # Try common patterns
     try:

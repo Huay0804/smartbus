@@ -1,0 +1,63 @@
+<svg width="260" height="60" viewBox="0 0 260 60" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SmartBus">
+  <!-- Bus icon (inspired by user reference; original SVG) -->
+  <g id="icon">
+    <!-- Body -->
+    <path
+      d="M14 18c0-4.4 3.6-8 8-8h54c9.4 0 17 7.6 17 17v17c0 4.4-3.6 8-8 8H22c-4.4 0-8-3.6-8-8V18Z"
+      fill="#0B67D0"
+    />
+    <path
+      d="M14 18c0-4.4 3.6-8 8-8h54c9.4 0 17 7.6 17 17v17c0 4.4-3.6 8-8 8H22c-4.4 0-8-3.6-8-8V18Z"
+      stroke="#084C9A"
+      stroke-width="2"
+      stroke-linejoin="round"
+    />
+
+    <!-- Windows -->
+    <g opacity="0.95">
+      <rect x="22" y="16" width="14" height="10" rx="2.5" fill="#EAF3FF"/>
+      <rect x="38" y="16" width="14" height="10" rx="2.5" fill="#EAF3FF"/>
+      <rect x="54" y="16" width="14" height="10" rx="2.5" fill="#EAF3FF"/>
+      <path d="M71 16h13c4.4 0 8 3.6 8 8v2H71V16Z" fill="#EAF3FF"/>
+    </g>
+
+    <!-- Door -->
+    <rect x="76" y="27" width="12" height="22" rx="2.5" fill="#084C9A" opacity="0.25"/>
+    <rect x="78" y="29" width="4" height="18" rx="2" fill="#EAF3FF" opacity="0.55"/>
+
+    <!-- Network lines (left) -->
+    <g stroke="#EAF3FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.95">
+      <circle cx="24" cy="35" r="2.6" fill="#EAF3FF"/>
+      <circle cx="16" cy="26" r="2.6" fill="#EAF3FF"/>
+      <circle cx="16" cy="44" r="2.6" fill="#EAF3FF"/>
+      <circle cx="33" cy="26" r="2.6" fill="#EAF3FF"/>
+      <line x1="24" y1="35" x2="16" y2="26"/>
+      <line x1="24" y1="35" x2="16" y2="44"/>
+      <line x1="24" y1="35" x2="33" y2="26"/>
+    </g>
+
+    <!-- SB mark -->
+    <text x="33" y="49" font-family="Arial, sans-serif" font-weight="800" font-size="28" fill="#084C9A" stroke="#EAF3FF" stroke-width="2" paint-order="stroke fill" stroke-linejoin="round">S</text>
+    <text x="52" y="49" font-family="Arial, sans-serif" font-weight="800" font-size="28" fill="#28A745" stroke="#EAF3FF" stroke-width="2" paint-order="stroke fill" stroke-linejoin="round">B</text>
+
+    <!-- Wifi -->
+    <g fill="none" stroke="#28A745" stroke-linecap="round" opacity="0.95">
+      <path d="M73 28c-5.6-5.6-14.6-5.6-20.2 0" stroke-width="3"/>
+      <path d="M70.5 32c-4.1-4.1-10.7-4.1-14.8 0" stroke-width="3"/>
+      <path d="M68 36c-2.6-2.6-6.8-2.6-9.4 0" stroke-width="3"/>
+      <circle cx="63.3" cy="40.2" r="2.1" fill="#28A745" stroke="none"/>
+    </g>
+
+    <!-- Wheels -->
+    <g>
+      <circle cx="30" cy="52" r="6.6" fill="#084C9A"/>
+      <circle cx="30" cy="52" r="3.2" fill="#EAF3FF"/>
+      <circle cx="76" cy="52" r="6.6" fill="#084C9A"/>
+      <circle cx="76" cy="52" r="3.2" fill="#EAF3FF"/>
+    </g>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="108" y="41" font-family="Arial, sans-serif" font-weight="bold" font-size="32" fill="#004085">Smart</text>
+  <text x="198" y="41" font-family="Arial, sans-serif" font-weight="bold" font-size="32" fill="#28A745">Bus</text>
+</svg>
